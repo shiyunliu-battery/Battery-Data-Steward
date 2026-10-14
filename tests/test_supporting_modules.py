@@ -251,7 +251,7 @@ def test_convert_report_formats_can_write_blue_html_and_xlsx(tmp_path):
     assert pdf_path.exists()
 
 
-def test_convert_repairs_regular_time_sampling_gaps_by_default(tmp_path):
+def test_convert_repairs_regular_time_sampling_gaps_when_requested(tmp_path):
     raw = tmp_path / "gap.csv"
     raw.write_text(
         "Test Time (s),Voltage (V),Current (A)\n0,3.0,0.0\n1,3.1,1.0\n2,3.2,2.0\n4,3.4,4.0\n",
@@ -259,7 +259,7 @@ def test_convert_repairs_regular_time_sampling_gaps_by_default(tmp_path):
     )
     output = tmp_path / "gap.bds.csv"
 
-    report = bds.convert(raw, output, cycler="generic", report_path="auto")
+    report = bds.convert(raw, output, cycler="generic", report_path="auto", time_sampling_policy="repair")
     exported = pl.read_csv(output)
 
     assert exported["Test Time (s)"].to_list() == [0.0, 1.0, 2.0, 3.0, 4.0]

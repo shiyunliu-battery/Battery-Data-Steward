@@ -40,7 +40,7 @@ class TimeSamplingResult:
 def apply_time_sampling_policy(
     df: pl.DataFrame,
     *,
-    policy: str = "repair",
+    policy: str = "warn",
     expected_interval_s: float | None = None,
     interpolation_method: str = "linear",
     tolerance: float = 0.1,
@@ -127,14 +127,25 @@ def apply_time_sampling_policy(
         issue.message = warning
         return TimeSamplingResult(df, metadata, warnings=[warning], validation_issues=[issue])
 
-    repaired = _insert_interpolated_rows(df, times, gaps, method=method)
+    repairable_gaps = [gap for gap in gaps if not _crosses_segment_boundary(df, int(gap["index"]))]
+    skipped_points = missing_points - sum(int(gap["missing_count"]) for gap in repairable_gaps)
+    metadata["boundary_skipped_points"] = skipped_points
+    if skipped_points:
+        warning += f" Skipped {skipped_points} points across cycle/step boundaries."
+        issue.message = warning
+    inserted_points = missing_points - skipped_points
+    if not inserted_points:
+        metadata["status"] = "boundary-gaps-not-repaired"
+        return TimeSamplingResult(df, metadata, warnings=[warning], validation_issues=[issue])
+
+    repaired = _insert_interpolated_rows(df, times, repairable_gaps, method=method)
     operation = (
-        f"Inserted {missing_points} interpolated sample row(s) on the test_time_s grid "
+        f"Inserted {inserted_points} interpolated sample row(s) on the test_time_s grid "
         f"using {method} interpolation."
     )
-    metadata["status"] = "repaired"
+    metadata["status"] = "partially-repaired" if skipped_points else "repaired"
     metadata["output_rows"] = repaired.height
-    metadata["inserted_rows"] = missing_points
+    metadata["inserted_rows"] = inserted_points
     return TimeSamplingResult(
         repaired,
         metadata,
@@ -252,6 +263,20 @@ def _public_gap(gap: dict[str, Any]) -> dict[str, Any]:
         "missing_times_s": times[:20],
         "missing_times_truncated": len(times) > 20,
     }
+
+
+def _crosses_segment_boundary(df: pl.DataFrame, index: int) -> bool:
+    for column in ("cycle_index", "step_index"):
+        if column not in df.columns:
+            continue
+        previous, following = df[column][index], df[column][index + 1]
+        if previous is None or following is None or previous != following:
+            return True
+    if "step_time_s" in df.columns:
+        previous, following = df["step_time_s"][index], df["step_time_s"][index + 1]
+        if previous is None or following is None or following < previous:
+            return True
+    return False
 
 
 def _insert_interpolated_rows(

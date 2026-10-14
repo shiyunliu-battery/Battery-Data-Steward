@@ -218,7 +218,7 @@ def main(argv: list[str] | None = None) -> int:
     convert_parser.add_argument(
         "--time-sampling-policy",
         choices=TIME_SAMPLING_POLICIES,
-        default="repair",
+        default="warn",
         help="How to handle missing samples on a regular test_time_s grid.",
     )
     convert_parser.add_argument(
@@ -304,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
     batch_parser.add_argument(
         "--time-sampling-policy",
         choices=TIME_SAMPLING_POLICIES,
-        default="repair",
+        default="warn",
         help="How to handle missing samples on a regular test_time_s grid.",
     )
     batch_parser.add_argument(
