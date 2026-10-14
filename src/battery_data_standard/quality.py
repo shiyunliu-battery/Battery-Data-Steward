@@ -304,21 +304,18 @@ def _ambiguous_ambient_temperature_source(source: str) -> bool:
 def _repeated_step_segments(cycles: list[Any], steps: list[Any]) -> dict[str, Any]:
     examples: list[dict[str, Any]] = []
     repeated = 0
-    for cycle in _ordered_unique(cycles):
-        indices = [index for index, value in enumerate(cycles) if value == cycle]
-        seen: set[Any] = set()
-        last_step: Any = object()
-        for index in indices:
-            step = steps[index]
-            if step is None:
-                continue
-            if step != last_step:
-                if step in seen:
-                    repeated += 1
-                    if len(examples) < 5:
-                        examples.append({"cycle": cycle, "step": step, "row": index})
-                seen.add(step)
-                last_step = step
+    states: dict[Any, tuple[set[Any], Any]] = {}
+    for index, (cycle, step) in enumerate(zip(cycles, steps, strict=True)):
+        if step is None:
+            continue
+        seen, last_step = states.setdefault(cycle, (set(), object()))
+        if step != last_step:
+            if step in seen:
+                repeated += 1
+                if len(examples) < 5:
+                    examples.append({"cycle": cycle, "step": step, "row": index})
+            seen.add(step)
+            states[cycle] = (seen, step)
     return {"repeated_step_segments": repeated, "repeated_step_examples": examples}
 
 

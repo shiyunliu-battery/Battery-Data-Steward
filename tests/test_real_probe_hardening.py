@@ -96,7 +96,14 @@ def test_timestamp_as_header_positional_csv_converts(tmp_path):
         encoding="utf-8",
     )
 
-    df = bds.read(raw, cycler="generic", current_sign="preserve")
+    with pytest.raises(Exception, match="Headerless wide tables"):
+        bds.read(raw, cycler="generic", current_sign="preserve")
+    df = bds.read(
+        raw,
+        cycler="generic",
+        current_sign="preserve",
+        profile={"columns": {"test_time": "column_3", "voltage": "column_8", "current": "column_9"}},
+    )
 
     assert df["test_time_s"].to_list() == [0.0, 1.0]
     assert df["voltage_v"].to_list() == pytest.approx([3.38427, 3.39])

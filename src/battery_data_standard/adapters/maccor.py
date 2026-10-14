@@ -7,6 +7,7 @@ from typing import Any
 
 import polars as pl
 
+from ..exceptions import UnsupportedFormatError
 from ..io import read_table
 from .generic import GenericAdapter
 
@@ -72,6 +73,19 @@ class MaccorAdapter(GenericAdapter):
         if raw.width < 7:
             return raw
 
+        known_layout = (
+            "cycle_col",
+            "step_col",
+            "test_time_col",
+            "step_time_col",
+            "cap_col",
+            "current_col",
+            "voltage_col",
+        )
+        if tuple(raw.columns[:7]) != known_layout:
+            raise UnsupportedFormatError(
+                "Unrecognized Maccor column layout; use a generic reader with an explicit mapping profile instead of positional guessing."
+            )
         positional = (
             "Cycle",
             "Step",

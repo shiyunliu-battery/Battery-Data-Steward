@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -110,15 +111,17 @@ def explain(
     *,
     cycler: str | None = "auto",
     profile: str | Path | dict[str, Any] | None = None,
-    current_sign: str = "charge-positive",
+    current_sign: str | None = None,
     current_sign_check: str = "none",
     repair_policy: str = "warn",
-    time_sampling_policy: str = "repair",
+    time_sampling_policy: str = "warn",
     detection_threshold: float = 0.1,
     sheet: str | int | None = None,
     target: str = "bds",
 ) -> ExplainReport:
     """Explain how BDS detects, maps, validates, and would export one file."""
+    if current_sign is None:
+        current_sign = "discharge-positive" if target == "pybamm" else "charge-positive"
     input_path = Path(path)
     if not input_path.exists():
         raise FileIOError(f"Input file does not exist: {input_path}")
@@ -221,12 +224,15 @@ def _explain_eis(
     sheet: str | int | None,
 ) -> ExplainReport:
     try:
-        df = read_eis(input_path, sheet=sheet)
+        with warnings.catch_warnings(record=True) as notices:
+            warnings.simplefilter("always", UserWarning)
+            df = read_eis(input_path, sheet=sheet)
         validation = validate_eis(df)
         status = "eis" if validation.valid else "eis-with-issues"
         return ExplainReport(
             input_path=str(input_path),
             status=status,
+            warnings=[str(notice.message) for notice in notices],
             data_kind=kind,
             sheet=sheet,
             source_columns=source_columns or list(df.columns),

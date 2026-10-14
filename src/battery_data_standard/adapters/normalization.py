@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
-from datetime import timezone
+from datetime import timedelta, timezone
 from itertools import pairwise
 from typing import Any
 
@@ -53,6 +53,9 @@ def normalize_raw_frame(
             f"current_sign must be one of {sorted(VALID_CURRENT_SIGN)}, got {current_sign!r}"
         )
 
+    decimal_separator = (profile or {}).get("decimal_separator")
+    if decimal_separator not in {None, ".", ","}:
+        raise ConversionError("decimal_separator must be '.' or ','.")
     raw = _clean_raw_columns(raw)
     aliases = _canonicalize_alias_map(aliases or {})
     profile_map = profile_column_map(profile or {})
@@ -65,14 +68,40 @@ def normalize_raw_frame(
         source = _find_column(raw.columns, candidates)
         if source is None:
             continue
-        series, source_unit, transform = _convert_column(raw[source], source, label)
+        series, source_unit, transform = _convert_column(
+            raw[source],
+            source,
+            label,
+            date_order=(profile or {}).get("date_order"),
+            decimal_separator=decimal_separator,
+        )
         output[label] = series.alias(label)
         state.used_columns.add(source)
         state.provenance.append(ColumnProvenance(label, source, source_unit=source_unit, transform=transform))
 
-    _derive_datetime_columns(output, raw, state)
+    if (profile or {}).get("date_order") is None:
+        time_sources = {
+            item.source for item in state.provenance if item.column in {"unix_time_s", "date_time"}
+        }
+        if any(
+            re.match(r"^\d{1,2}/\d{1,2}/\d{4}", str(value))
+            for source in time_sources
+            if source in raw.columns
+            for value in raw[source].to_list()
+            if value is not None
+        ):
+            state.warnings.append(
+                "Slash-separated dates use month-first parsing unless profile date_order='dayfirst' is set; verify ambiguous source dates."
+            )
+    _split_undirected_accumulators(output, raw, state, decimal_separator=decimal_separator)
+    _derive_datetime_columns(output, raw, state, date_order=(profile or {}).get("date_order"))
     _derive_test_time(output, state)
+    raw_current = output.get("current_a")
     _apply_current_sign(output, raw, state, current_sign, raw_current_sign)
+    if "power_w" in output and raw_current is not None and not raw_current.equals(output["current_a"]):
+        state.warnings.append(
+            "Source power was preserved after current-sign normalization; its sign convention is unknown. Verify power against voltage and current before energy analysis."
+        )
     _derive_power(output, state)
 
     if keep_raw:
@@ -102,8 +131,78 @@ def normalize_raw_frame(
         metadata={
             "mapped_columns": sorted(state.used_columns),
             "unmapped_columns": unmapped,
+            "accumulator_reset_scope": (profile or {}).get("accumulator_reset_scope", "unknown"),
         },
     )
+
+
+def _split_undirected_accumulators(
+    output: dict[str, pl.Series],
+    raw: pl.DataFrame,
+    state: NormalizationState,
+    *,
+    decimal_separator: str | None = None,
+) -> None:
+    status_source = _find_column(
+        raw.columns, ("Status", "State", "Step Type", "Step State", "工步类型", "状态")
+    )
+    statuses = (
+        [_classify_status(value) for value in raw[status_source].to_list()]
+        if status_source
+        else [None] * raw.height
+    )
+    for kind, candidates, unit in (
+        (
+            "capacity",
+            (
+                "Capacity(mAh)",
+                "Capacity(Ah)",
+                "Capacity",
+                "容量(Ah)",
+                "容量(mAh)",
+                "Capacity/mA.h",
+                "Amp-hr",
+                "(Q-Qo)/mA.h",
+            ),
+            "ah",
+        ),
+        ("energy", ("Energy(Wh)", "Energy", "Watt-hr"), "wh"),
+    ):
+        source = _find_column(raw.columns, candidates)
+        if source is None or source in state.used_columns:
+            continue
+        values, source_unit, transform = _convert_column(
+            raw[source], source, f"charge_{kind}_{unit}", decimal_separator=decimal_separator
+        )
+        state.used_columns.add(source)
+        output[f"source_{kind}_{unit}"] = values.alias(f"source_{kind}_{unit}")
+        state.provenance.append(
+            ColumnProvenance(f"source_{kind}_{unit}", source, source_unit=source_unit, transform=transform)
+        )
+        for direction in ("charge", "discharge"):
+            label = f"{direction}_{kind}_{unit}"
+            if label in output or direction not in statuses:
+                continue
+            output[label] = pl.Series(
+                label,
+                [
+                    abs(value) if value is not None and (status == direction or value == 0) else None
+                    for value, status in zip(values.to_list(), statuses, strict=True)
+                ],
+                dtype=pl.Float64,
+            )
+            state.provenance.append(
+                ColumnProvenance(
+                    label,
+                    f"{source}|{status_source}",
+                    source_unit=source_unit,
+                    transform="split undirected accumulator by explicit status",
+                )
+            )
+        if any(status not in {"charge", "discharge", "rest"} for status in statuses):
+            state.warnings.append(
+                f"{source} has rows without an explicit charge/discharge state; source values were retained without assigning a directional accumulator."
+            )
 
 
 def repair_bds_frame(df: pl.DataFrame, *, policy: str = "warn") -> tuple[pl.DataFrame, list[str]]:
@@ -228,26 +327,37 @@ def _find_column(columns: list[str], candidates: tuple[str, ...]) -> str | None:
     return None
 
 
-def _convert_column(series: pl.Series, source: str, label: str) -> tuple[pl.Series, str | None, str | None]:
+def _convert_column(
+    series: pl.Series,
+    source: str,
+    label: str,
+    *,
+    date_order: str | None = None,
+    decimal_separator: str | None = None,
+) -> tuple[pl.Series, str | None, str | None]:
     unit = _source_unit(source)
     target_unit = LABEL_TO_SPEC[label].unit
     if label == "unix_time_s":
-        numeric = _float_series(series)
+        numeric = _float_series(series, decimal_separator=decimal_separator)
         values = numeric.to_list()
         if any(v is not None for v in values):
             return numeric, unit, "numeric"
-        parsed = _parse_unix_time(series.to_list())
+        parsed = _parse_unix_time(series.to_list(), date_order=date_order)
         return pl.Series(series.name, parsed, dtype=pl.Float64), unit, "parsed UTC timestamp"
     if label in {"date_time"}:
         return _string_series(series), unit, "string"
     if target_unit == "1":
-        return _int_series(series), unit, "integer"
+        return _int_series(series, decimal_separator=decimal_separator), unit, "integer"
     if target_unit in {"s", "A", "V", "degC", "Ah", "Wh", "W", "ohm"}:
-        if label == "test_time_s" or label == "step_time_s":
-            numeric = _duration_series(series)
-        else:
-            numeric = _float_series(series)
         factor = _unit_factor(unit, target_unit)
+        if label in {"test_time_s", "step_time_s"}:
+            numeric = _duration_series(series, numeric_factor=factor, decimal_separator=decimal_separator)
+            return (
+                numeric,
+                unit,
+                f"numeric unit conversion x{factor:g}; formatted durations parsed as seconds",
+            )
+        numeric = _float_series(series, decimal_separator=decimal_separator)
         if factor != 1.0:
             numeric = (numeric * factor).alias(series.name)
             return numeric, unit, f"unit conversion x{factor:g}"
@@ -259,6 +369,8 @@ def _derive_datetime_columns(
     output: dict[str, pl.Series],
     raw: pl.DataFrame,
     state: NormalizationState,
+    *,
+    date_order: str | None = None,
 ) -> None:
     if "unix_time_s" in output:
         return
@@ -274,7 +386,13 @@ def _derive_datetime_columns(
         values = raw[raw_source].to_list()
         source = raw_source
 
-    unix_values = _parse_unix_time(values)
+    unix_values = _parse_unix_time(values, date_order=date_order)
+    if date_order is None and any(
+        re.match(r"^\d{1,2}/\d{1,2}/\d{4}", str(v)) for v in values if v is not None
+    ):
+        state.warnings.append(
+            "Slash-separated dates use month-first parsing unless profile date_order='dayfirst' is set; verify ambiguous source dates."
+        )
     if not any(v is not None for v in unix_values):
         state.warnings.append(f"Could not parse timestamps from {source}.")
         return
@@ -340,7 +458,19 @@ def _apply_current_sign(
 
     status_source = _find_column(
         raw.columns,
-        ("Status", "State", "Step State", "Step Type", "Type", "Mode", "MD", "Command", "Test step"),
+        (
+            "Status",
+            "State",
+            "Step State",
+            "Step Type",
+            "Type",
+            "Mode",
+            "MD",
+            "Command",
+            "Test step",
+            "工步类型",
+            "状态",
+        ),
     )
     if status_source is None:
         if _apply_raw_current_sign(output, state, current_sign, raw_current_sign):
@@ -427,7 +557,7 @@ def _apply_raw_current_sign(
     return True
 
 
-def _parse_unix_time(values: list[Any]) -> list[float | None]:
+def _parse_unix_time(values: list[Any], *, date_order: str | None = None) -> list[float | None]:
     cleaned: list[Any] = []
     for value in values:
         if value is None:
@@ -437,12 +567,17 @@ def _parse_unix_time(values: list[Any]) -> list[float | None]:
         if re.match(r"^\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}\s+\d{1,2}:\d{2}:\d{2}(?:\.\d+)?s$", text):
             text = text[:-1]
         cleaned.append(text)
+    if date_order not in {None, "dayfirst", "monthfirst"}:
+        raise ConversionError("date_order must be dayfirst or monthfirst.")
+    values_series = pd.Series(cleaned, dtype="object")
+    dotted = values_series.astype(str).str.match(r"^\d{1,2}\.\d{1,2}\.\d{4}")
     parsed = pd.to_datetime(
-        pd.Series(cleaned, dtype="object"),
-        errors="coerce",
-        utc=True,
-        format="mixed",
+        values_series, errors="coerce", utc=True, format="mixed", dayfirst=date_order == "dayfirst"
     )
+    if date_order is None and dotted.any():
+        parsed.loc[dotted] = pd.to_datetime(
+            values_series.loc[dotted], errors="coerce", utc=True, format="mixed", dayfirst=True
+        )
     unix: list[float | None] = []
     for value in parsed:
         if pd.isna(value):
@@ -488,21 +623,39 @@ def _string_series(series: pl.Series) -> pl.Series:
     )
 
 
-def _int_series(series: pl.Series) -> pl.Series:
+def _int_series(series: pl.Series, *, decimal_separator: str | None = None) -> pl.Series:
     return pl.Series(
-        series.name, [None if (v := _parse_number(x)) is None else int(v) for x in series.to_list()]
+        series.name,
+        [
+            None if (v := _parse_number(x, decimal_separator=decimal_separator)) is None else int(v)
+            for x in series.to_list()
+        ],
     )
 
 
-def _float_series(series: pl.Series) -> pl.Series:
-    return pl.Series(series.name, [_parse_number(x) for x in series.to_list()], dtype=pl.Float64)
+def _float_series(series: pl.Series, *, decimal_separator: str | None = None) -> pl.Series:
+    if series.dtype.is_numeric():
+        return series.cast(pl.Float64).fill_nan(None)
+    return pl.Series(
+        series.name,
+        [_parse_number(x, decimal_separator=decimal_separator) for x in series.to_list()],
+        dtype=pl.Float64,
+    )
 
 
-def _duration_series(series: pl.Series) -> pl.Series:
-    return pl.Series(series.name, [_parse_duration(x) for x in series.to_list()], dtype=pl.Float64)
+def _duration_series(
+    series: pl.Series, *, numeric_factor: float = 1.0, decimal_separator: str | None = None
+) -> pl.Series:
+    if series.dtype.is_numeric():
+        return (series.cast(pl.Float64).fill_nan(None) * numeric_factor).alias(series.name)
+    values: list[float | None] = []
+    for value in series.to_list():
+        numeric = _parse_number(value, decimal_separator=decimal_separator)
+        values.append(numeric * numeric_factor if numeric is not None else _parse_duration(value))
+    return pl.Series(series.name, values, dtype=pl.Float64)
 
 
-def _parse_number(value: Any) -> float | None:
+def _parse_number(value: Any, *, decimal_separator: str | None = None) -> float | None:
     if value is None:
         return None
     if isinstance(value, (int, float)):
@@ -512,8 +665,20 @@ def _parse_number(value: Any) -> float | None:
     text = str(value).strip().strip('"').replace("\t", "")
     if text in {"", "-", "--", "nan", "NaN", "None"}:
         return None
-    if "," in text and "." in text:
+    if decimal_separator == ",":
+        text = text.replace(".", "").replace(",", ".")
+    elif decimal_separator == ".":
         text = text.replace(",", "")
+    if "," in text and "." in text:
+        if text.rfind(",") > text.rfind("."):
+            raise ConversionError(
+                f"Mixed numeric separators in {text!r}; normalize the source locale explicitly."
+            )
+        text = text.replace(",", "")
+    elif re.fullmatch(r"[+-]?\d{1,3},\d{3}", text):
+        raise ConversionError(
+            f"Ambiguous numeric value {text!r}: normalize the decimal/thousands separator explicitly."
+        )
     elif re.search(r"\d,\d", text):
         text = text.replace(",", ".")
     try:
@@ -523,13 +688,15 @@ def _parse_number(value: Any) -> float | None:
 
 
 def _parse_duration(value: Any) -> float | None:
+    if isinstance(value, timedelta):
+        return value.total_seconds()
     numeric = _parse_number(value)
     if numeric is not None:
         return numeric
     if value is None:
         return None
     text = str(value).strip().strip('"')
-    match = re.match(r"^\s*(\d+)d\s+(\d+):(\d+):(\d+(?:\.\d+)?)\s*$", text)
+    match = re.match(r"^\s*(\d+)(?:d\s+| days?\s+|-)(\d+):(\d+):(\d+(?:\.\d+)?)\s*$", text)
     if match:
         days, hours, minutes = map(int, match.groups()[:3])
         seconds = float(match.group(4))
@@ -606,8 +773,10 @@ def _source_unit(source: str) -> str | None:
         .replace("Ohm", "ohm")
     )
     lower = normalized.strip().lower()
-    if lower in {"decimal hours", "hours in hh:mm:ss.xxx"}:
+    if lower == "decimal hours":
         return "h"
+    if lower == "hours in hh:mm:ss.xxx":
+        return "hours in hh:mm:ss.xxx"
     if lower in {"seconds", "second"}:
         return "s"
     if lower in {"minutes", "minute"}:
@@ -677,17 +846,33 @@ def _classify_status(value: Any) -> str | None:
         return "charge"
     if text in {"d", "dchg"} or "discharge" in text or "dch" in text:
         return "discharge"
+    if re.search(r"(?:^|[_ -])chg(?:$|[_ -])", text):
+        return "charge"
     if text in {"r", "rest", "idle", "pause", "ocv", "open circuit"} or "rest" in text:
         return "rest"
-    if text.startswith("c"):
+    if text in {
+        "cha",
+        "ch",
+        "charging",
+        "cc",
+        "cv",
+        "cccv",
+        "cc_cv",
+        "充电",
+        "恒流充电",
+        "恒压充电",
+        "恒流恒压充电",
+    }:
         return "charge"
-    if text.startswith("d"):
+    if text in {"dis", "discharging", "放电", "恒流放电", "恒压放电"}:
         return "discharge"
+    if text in {"静置", "搁置"}:
+        return "rest"
     return None
 
 
 def _slug(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "", str(value).lower())
+    return "".join(character for character in str(value).lower() if character.isalnum())
 
 
 def _repair_operations(df: pl.DataFrame) -> list[str]:

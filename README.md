@@ -245,7 +245,7 @@ Create step-level or cycle-level summaries from a normalized dataframe:
 
 ```python
 steps = bds.summarize_steps(df)
-cycles = bds.summarize_cycles(df)
+cycles = bds.summarize_cycles(df, capacity_reset="cycle")
 ```
 
 ## Internal Normalized Model and Export Targets
@@ -298,10 +298,13 @@ eis = bds.read_eis("impedance.csv")
 report = bds.convert_eis("impedance.csv", "normalized.eis.csv")
 ```
 
-EIS conversion rejects invalid source rows rather than silently dropping them.
-Phase columns labeled with `deg` or `rad` use that unit. Conventional unitless
-headers `Zphz`, `Zphase`, and `Phase` are interpreted as degrees; label radian
-values explicitly as `Phase(rad)`.
+EIS conversion skips entirely empty rows and exact repeated header rows, records
+cleanup notices, and rejects nonempty rows with invalid numeric data or
+non-positive frequency. Errors identify a parsed table row, not a physical file
+line. Explicit `deg` or `rad` phase labels determine the unit. Unitless `Zphz`,
+`Zphase`, and `Phase` headers assume degrees with a warning; use
+`read_eis(path, phase_unit="rad")` or `bds convert-eis ... --phase-unit rad` to
+override that assumption. Conversion reports retain these notices.
 
 `read()` and `convert()` are time-series entry points. `batch` and
 `batch_convert()` can route mixed directories and archives that contain
@@ -329,9 +332,41 @@ Use a profile from the CLI:
 bds convert lab_export.csv normalized.bds.csv --cycler generic --profile profile.json
 ```
 
+## Intake Ambiguities and Accumulator Summaries
+
+Dotted dates such as `01.02.2023` are parsed day-first. Slash-separated dates
+retain month-first parsing with a warning; set `"date_order": "dayfirst"` or
+`"monthfirst"` in a mapping profile. Profiles also accept an explicit `encoding`
+when automatic legacy encoding detection is uncertain. Ambiguous strings such
+as `"1,000"` are rejected rather than guessing whether a comma is a decimal or
+thousands separator. Set profile `"decimal_separator": ","` for decimal commas
+or `"decimal_separator": "."` for decimal points and comma thousands separators.
+
+Headerless wide files require explicit column mapping. Multiple Arbin channel
+sheets require an explicit `sheet` or `batch --excel-sheets all`; independent
+channels are never silently concatenated. Sheet-level batch failures retain
+successful records and processing continues unless `fail_fast=True`.
+
+Undirected capacity/energy values are preserved as `source_capacity_ah` or
+`source_energy_wh`. Directional fields are derived only from recognizable
+charge/discharge status. Reports carry `accumulator_reset_scope`, defaulting to
+`unknown`; a profile can declare the scope after protocol review.
+
+`summarize_cycles(df)` warns when reset scope is unknown and labels maxima as
+recorded maxima, not transferred totals. Use `capacity_reset="cycle"` for
+cycle-reset accumulators or `capacity_reset="step"` to sum maxima from consecutive
+step segments. These modes require complete, zero-based accumulator coverage;
+truncated measurements and test-wide accumulators need a separate baseline-aware
+calculation. BDS does not invent cycle identifiers or integrate missing capacity.
+
 ## Current Sign Convention
 
-The default current convention is charge-positive and discharge-negative.
+The default current convention for reading and BDS exports is charge-positive
+and discharge-negative. `convert(..., target="pybamm")` and batch PyBaMM exports
+instead default to discharge-positive. An explicit `current_sign` overrides the
+target default. Source power values are preserved; if current normalization
+changes their corresponding current values, reports warn that the source power
+sign convention requires review.
 
 Use `--current-sign preserve` to retain the source sign convention, or
 `--current-sign discharge-positive` when a downstream workflow requires

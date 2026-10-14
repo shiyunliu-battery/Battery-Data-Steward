@@ -118,15 +118,6 @@ def apply_time_sampling_policy(
     if policy == "warn":
         metadata["status"] = "gaps-detected"
         return TimeSamplingResult(df, metadata, warnings=[warning], validation_issues=[issue])
-    if missing_points > max_inserted_rows:
-        metadata["status"] = "too-many-gaps-not-repaired"
-        warning = (
-            f"{warning} Automatic interpolation was skipped because it would insert "
-            f"{missing_points} rows, above the configured limit of {max_inserted_rows}."
-        )
-        issue.message = warning
-        return TimeSamplingResult(df, metadata, warnings=[warning], validation_issues=[issue])
-
     repairable_gaps = [gap for gap in gaps if not _crosses_segment_boundary(df, int(gap["index"]))]
     skipped_points = missing_points - sum(int(gap["missing_count"]) for gap in repairable_gaps)
     metadata["boundary_skipped_points"] = skipped_points
@@ -136,6 +127,15 @@ def apply_time_sampling_policy(
     inserted_points = missing_points - skipped_points
     if not inserted_points:
         metadata["status"] = "boundary-gaps-not-repaired"
+        return TimeSamplingResult(df, metadata, warnings=[warning], validation_issues=[issue])
+
+    if inserted_points > max_inserted_rows:
+        metadata["status"] = "too-many-gaps-not-repaired"
+        warning = (
+            f"{warning} Automatic interpolation was skipped because it would insert "
+            f"{inserted_points} rows, above the configured limit of {max_inserted_rows}."
+        )
+        issue.message = warning
         return TimeSamplingResult(df, metadata, warnings=[warning], validation_issues=[issue])
 
     repaired = _insert_interpolated_rows(df, times, repairable_gaps, method=method)
@@ -239,29 +239,31 @@ def _sampling_gaps(times: list[float], *, expected: float, tolerance: float) -> 
             continue
         if abs(delta - (multiples * expected)) > tolerance_abs:
             continue
-        missing_times = [start + expected * step for step in range(1, multiples)]
         gaps.append(
             {
                 "index": index,
                 "start_time_s": start,
                 "end_time_s": end,
                 "observed_interval_s": delta,
-                "missing_count": len(missing_times),
-                "_missing_times_s": missing_times,
+                "missing_count": multiples - 1,
+                "_interval_s": expected,
             }
         )
     return gaps
 
 
 def _public_gap(gap: dict[str, Any]) -> dict[str, Any]:
-    times = list(gap.get("_missing_times_s") or [])
+    times = [
+        gap["start_time_s"] + gap["_interval_s"] * step
+        for step in range(1, min(int(gap["missing_count"]), 20) + 1)
+    ]
     return {
         "start_time_s": gap["start_time_s"],
         "end_time_s": gap["end_time_s"],
         "observed_interval_s": gap["observed_interval_s"],
         "missing_count": gap["missing_count"],
         "missing_times_s": times[:20],
-        "missing_times_truncated": len(times) > 20,
+        "missing_times_truncated": gap["missing_count"] > 20,
     }
 
 
@@ -298,7 +300,8 @@ def _insert_interpolated_rows(
         next_row = rows[index + 1]
         start = times[index]
         end = times[index + 1]
-        for missing_time in gap["_missing_times_s"]:
+        for step in range(1, int(gap["missing_count"]) + 1):
+            missing_time = start + gap["_interval_s"] * step
             output.append(
                 _interpolated_row(
                     row,
@@ -311,7 +314,11 @@ def _insert_interpolated_rows(
                 )
             )
     output.append(rows[-1])
-    return pl.DataFrame(output).select(df.columns)
+    output_schema = {
+        column: pl.Float64 if _is_continuous_numeric(column, dtype) else dtype
+        for column, dtype in schema.items()
+    }
+    return pl.DataFrame(output, schema=output_schema, strict=False).select(df.columns)
 
 
 def _interpolated_row(

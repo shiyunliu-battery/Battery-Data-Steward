@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Follow up on preprocessing integrity: count only eligible interpolations
+  against row limits, preserve interpolation dtypes, and report partial repairs.
+- Align explain sampling defaults with conversion; report boundary-skipped points.
+- Skip and report empty/repeated-header EIS rows; expose explicit phase units and
+  warn for unspecified units. Preserve per-sheet batch results across failures.
+- Remove first-letter current-state guesses; warn when source power is preserved
+  after current-sign changes.
+- Fix formatted duration scaling, extended durations, legacy microamp decoding,
+  dotted dates and configurable slash-date ordering.
+- Preserve and split undirected accumulators by explicit status; remove incorrect
+  BioLogic flag/capacity fallbacks and support NEWARE Chinese headers/states.
+- Require explicit mappings for headerless wide inputs and explicit multi-channel
+  workbook selection. Reject ambiguous comma numeric strings.
+- Use discharge-positive current by default for PyBaMM conversion targets.
+- Require declared reset semantics for capacity totals and use one-pass repeated
+  step detection rather than a full table scan for every cycle.
+
 - Compute derived power after current-sign normalization.
 - Change conversion and batch sampling defaults to warning-only; interpolation
   requires explicit opt-in and skips known cycle/step boundaries and timer resets.

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import polars as pl
 
 
@@ -16,11 +18,51 @@ def summarize_steps(df: pl.DataFrame) -> pl.DataFrame:
     return _group_summary(df, group_cols)
 
 
-def summarize_cycles(df: pl.DataFrame) -> pl.DataFrame:
+def summarize_cycles(df: pl.DataFrame, *, capacity_reset: str = "unknown") -> pl.DataFrame:
     """Summarize a normalized dataframe by cycle when available."""
-    if "cycle_index" not in df.columns:
-        return _summary_for_whole_table(df, label="all")
-    return _group_summary(df, ["cycle_index"])
+    if capacity_reset not in {"unknown", "step", "cycle"}:
+        raise ValueError(
+            "capacity_reset must be unknown, step or cycle; test-wide accumulators require a separate baseline-aware calculation."
+        )
+    result = (
+        _group_summary(df, ["cycle_index"])
+        if "cycle_index" in df.columns
+        else _summary_for_whole_table(df, label="all")
+    )
+    accumulators = {
+        "charge_capacity_ah": "Charging Capacity End / Ah",
+        "discharge_capacity_ah": "Discharging Capacity End / Ah",
+        "charge_energy_wh": "Charging Energy End / Wh",
+        "discharge_energy_wh": "Discharging Energy End / Wh",
+    }
+    present = {key: value for key, value in accumulators.items() if key in df.columns}
+    if capacity_reset == "unknown" and present:
+        warnings.warn(
+            "Accumulator reset scope is unknown; cycle summaries show recorded maxima, not total transferred charge or energy. Set capacity_reset='step' or 'cycle' after reviewing the protocol.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return result.rename(
+            {label: label.replace(" End", " Recorded Maximum") for label in present.values()}
+        )
+    if capacity_reset == "step" and present:
+        if "step_index" not in df.columns or "cycle_index" not in df.columns:
+            raise ValueError("Step-reset summaries require cycle_index and step_index.")
+        segmented = df.with_columns(
+            (pl.struct("cycle_index", "step_index") != pl.struct("cycle_index", "step_index").shift(1))
+            .fill_null(True)
+            .cast(pl.Int64)
+            .cum_sum()
+            .alias("__segment")
+        )
+        maxima = segmented.group_by(["cycle_index", "__segment"], maintain_order=True).agg(
+            [pl.col(key).max().alias(label) for key, label in present.items()]
+        )
+        totals = maxima.group_by("cycle_index", maintain_order=True).agg(
+            [pl.col(label).sum() for label in present.values()]
+        )
+        result = result.drop(list(present.values())).join(totals, on="cycle_index", how="left")
+    return result
 
 
 def _group_summary(df: pl.DataFrame, group_cols: list[str]) -> pl.DataFrame:
