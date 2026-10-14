@@ -1,4 +1,4 @@
-# battery-data-standard + BEEP
+# battery-data-steward + BEEP
 
 ## Question
 
@@ -36,7 +36,7 @@ import polars as pl
 beep_staging = pl.read_csv("beep_staging.csv")
 
 metadata = {
-    "source": "battery-data-standard",
+    "source": "battery-data-steward",
     "bds_report": "normalized.report.json",
     "current_sign": "preserve",
     "units": {

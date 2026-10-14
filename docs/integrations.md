@@ -1,6 +1,6 @@
 # Ecosystem Integrations
 
-These pages show how to use `battery-data-standard` (BDS) as the first
+These pages show how to use `battery-data-steward` (BDS) as the first
 normalization step before downstream battery, data engineering, or modelling
 tools.
 
@@ -13,22 +13,22 @@ The common pattern is:
 
 ## Data Engineering
 
-- [battery-data-standard + DuckDB](integrations/duckdb.md)
-- [battery-data-standard + Polars](integrations/polars.md)
+- [battery-data-steward + DuckDB](integrations/duckdb.md)
+- [battery-data-steward + Polars](integrations/polars.md)
 
 ## Battery Analysis Tools
 
-- [battery-data-standard + cellpy](integrations/cellpy.md)
-- [battery-data-standard + BEEP](integrations/beep.md)
+- [battery-data-steward + cellpy](integrations/cellpy.md)
+- [battery-data-steward + BEEP](integrations/beep.md)
 
 ## Modelling And Diagnostic Workflows
 
-- [battery-data-standard + PyBaMM](integrations/pybamm.md)
-- [battery-data-standard + PyProBE](integrations/pyprobe.md)
+- [battery-data-steward + PyBaMM](integrations/pybamm.md)
+- [battery-data-steward + PyProBE](integrations/pyprobe.md)
 
 ## Repositories
 
-- [battery-data-standard + Battery Archive](integrations/battery-archive.md)
+- [battery-data-steward + Battery Archive](integrations/battery-archive.md)
 
 ## BDS Export Labels
 

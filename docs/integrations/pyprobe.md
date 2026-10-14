@@ -1,4 +1,4 @@
-# battery-data-standard + PyProBE
+# battery-data-steward + PyProBE
 
 ## Question
 

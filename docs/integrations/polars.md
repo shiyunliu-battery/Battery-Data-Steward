@@ -1,4 +1,4 @@
-# battery-data-standard + Polars
+# battery-data-steward + Polars
 
 ## Question
 

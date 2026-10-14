@@ -1,4 +1,4 @@
-# battery-data-standard + cellpy
+# battery-data-steward + cellpy
 
 ## Question
 

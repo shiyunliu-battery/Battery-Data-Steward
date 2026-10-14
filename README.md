@@ -1,18 +1,21 @@
-# Battery Data Standard
+# Battery Data Steward
 
-**Inspect, diagnose, and convert battery cycler data locally.**
+**Inspect. Validate. Trace. Reuse.**
 
-[![PyPI 0.3.1](https://img.shields.io/badge/PyPI-0.3.1-blue.svg)](https://pypi.org/project/battery-data-standard/0.3.1/)
-[![Python >=3.10](https://img.shields.io/badge/Python-%3E%3D3.10-blue.svg)](https://pypi.org/project/battery-data-standard/0.3.1/)
+Evidence-aware battery data preprocessing and quality assurance.
+
+[![Version 0.4.0](https://img.shields.io/badge/version-0.4.0-blue.svg)](CHANGELOG.md)
+[![Python >=3.10](https://img.shields.io/badge/Python-%3E%3D3.10-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Package](https://img.shields.io/badge/package-bds-blue.svg)](https://pypi.org/project/battery-data-standard/)
+[![Package](https://img.shields.io/badge/package-battery--data--steward-blue.svg)](pyproject.toml)
 
-`battery-data-standard` (BDS) is an open-source command-line tool and Python
-library for working with battery cycler exports.
+Battery Data Steward (BDS) is an open-source Python toolkit that helps researchers
+inspect raw battery data, identify quality risks, track preprocessing decisions,
+and prepare reviewable datasets for downstream analysis.
 
-BDS detects file formats, explains column and unit mappings, identifies
+BDS detects supported formats, explains column and unit mappings, identifies
 time-axis and current-sign risks, reports unsupported fields, and converts
-supported data to CSV or Parquet for downstream workflows.
+supported time-series and EIS data to CSV or Parquet with review reports.
 
 ```bash
 bds inspect raw_export.csv
@@ -28,28 +31,35 @@ own cycler software before using the package in automated production workflows.
 
 ## Installation
 
-Python 3.10 or newer is required.
+Python 3.10 or newer is required. The renamed distribution is
+`battery-data-steward`, starting with the planned 0.4.0 release. The PyPI command
+below becomes available after that release is published. Until then, install
+this checkout with `python -m pip install .`.
+
+When migrating an environment that has the old distribution installed, first run
+`python -m pip uninstall battery-data-standard`. Both distributions provide the
+same import paths and CLI, so they should not be installed together.
 
 ```bash
-pip install --upgrade battery-data-standard
+pip install --upgrade battery-data-steward
 ```
 
 Optional extras are available for additional input formats:
 
 ```bash
-pip install "battery-data-standard[yaml]"
-pip install "battery-data-standard[matlab]"
-pip install "battery-data-standard[mpr]"
+pip install "battery-data-steward[yaml]"
+pip install "battery-data-steward[matlab]"
+pip install "battery-data-steward[mpr]"
 ```
 
-The package installs the `bds` command and exposes both the full package name
-and a short import alias:
+The distribution installs the `bds` command. Use the public short import;
+the historical module path remains compatible:
 
 ```python
-import battery_data_standard as bds
-
-# or
 import bds
+
+# Existing code remains supported.
+import battery_data_standard as bds
 ```
 
 ## Features
@@ -64,7 +74,7 @@ The package can:
 - convert supported time-series and EIS data to CSV or Parquet;
 - generate JSON, HTML, Excel, and PDF reports;
 - process directories, zip archives, and tar archives locally;
-- export staging data for BDF, PyProBE, PyBaMM, cellpy, BEEP, DuckDB, and
+- export staging data for PyProBE, PyBaMM, cellpy, BEEP, DuckDB, and
   Polars workflows;
 - use optional column-mapping profiles for lab-specific headers.
 
@@ -88,7 +98,7 @@ bds inspect raw_export.csv
 Preview mappings for a downstream target:
 
 ```bash
-bds inspect raw_export.csv --target bdf --format json
+bds inspect raw_export.csv --target pybamm --format json
 bds inspect raw_export.csv --target pyprobe
 ```
 
@@ -391,10 +401,30 @@ default `repair_policy="warn"`. Use `repair_policy="repair"` or
 `--repair-policy repair` only when the pipeline explicitly accepts the documented
 normalizations.
 
+## Research Scope and Roadmap
+
+Today, BDS provides data inspection, table validation, diagnostics, conversion,
+and reports containing available provenance, parameters, warnings, and recorded
+repair operations. These outputs help researchers review data and processing;
+a successful conversion or validation does not establish that a dataset can
+support SOH, RUL, EIS fitting, or a specific scientific conclusion.
+
+The planned **Battery Data Quality & Readiness Package** would add task-specific
+readiness criteria, explicit unresolved evidence, and review decisions. These
+readiness gates and a full transformation evidence workflow are future work,
+not current capabilities. See [project direction](docs/project-direction.md).
+
+BDS focuses on input quality and preprocessing review. Battery-Feature-Lab
+focuses on feature extraction and diagnostics; Battery Context focuses on
+evidence packages and scientific sufficiency. These are complementary project
+boundaries, not bundled integrations or guarantees of scientific validity.
+
 ## Documentation
 
 Public documentation is in the `docs` directory:
 
+- [Package migration and publishing](docs/releasing.md)
+- [Project direction and roadmap](docs/project-direction.md)
 - [Python API reference](docs/api-reference.md)
 - [Supported formats](docs/supported-formats.md)
 - [Export template](docs/export-template.md)
@@ -403,7 +433,6 @@ Public documentation is in the `docs` directory:
 - [Diagnostics and audit reports](docs/diagnostics.md)
 - [Current sign convention](docs/current-sign.md)
 - [Step and cycle semantics](docs/step-cycle-semantics.md)
-- [BDF compatibility status](docs/bdf-compatibility.md)
 - [Warning and issue codes](docs/warning-codes.md)
 - [Fixture contribution guide](docs/fixture-contribution.md)
 - [Ecosystem integrations](docs/integrations.md)

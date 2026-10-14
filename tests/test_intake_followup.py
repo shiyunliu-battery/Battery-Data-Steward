@@ -260,7 +260,10 @@ def test_formatted_hour_header_and_excel_long_duration(tmp_path):
 
 def test_generic_minute_millivolt_and_milliohm_units(tmp_path):
     source = tmp_path / "units.csv"
-    source.write_text("Time [min],Voltage (mV),Current,Internal Resistance (mΩ)\n0,4000,1,10\n1,4000,1,10\n")
+    source.write_text(
+        "Time [min],Voltage (mV),Current,Internal Resistance (mΩ)\n0,4000,1,10\n1,4000,1,10\n",
+        encoding="utf-8",
+    )
     frame = bds.read(source, cycler="generic")
     assert frame["test_time_s"].to_list() == [0, 60]
     assert frame["voltage_v"].to_list() == [4, 4]

@@ -538,7 +538,7 @@ def read_biologic_mpr(path: str | Path) -> TableReadResult:
     except ImportError as exc:
         raise UnsupportedFeatureError(
             "BioLogic .mpr requires the optional galvani backend. "
-            "Install with battery-data-standard[mpr], or export .mpt text from EC-Lab."
+            "Install with battery-data-steward[mpr], or export .mpt text from EC-Lab."
         ) from exc
 
     bio_logic = galvani.BioLogic
@@ -683,7 +683,7 @@ def _load_matlab_variables(path: str | Path) -> dict[str, Any]:
     except ImportError as exc:
         raise UnsupportedFeatureError(
             "MATLAB files require the optional MATLAB dependencies. "
-            "Install with battery-data-standard[matlab]."
+            "Install with battery-data-steward[matlab]."
         ) from exc
 
     try:
@@ -700,7 +700,7 @@ def _load_hdf5_matlab_variables(path: Path) -> dict[str, Any]:
         import h5py
     except ImportError as exc:
         raise UnsupportedFeatureError(
-            "MATLAB v7.3 files require h5py. Install with battery-data-standard[matlab]."
+            "MATLAB v7.3 files require h5py. Install with battery-data-steward[matlab]."
         ) from exc
 
     values: dict[str, Any] = {}

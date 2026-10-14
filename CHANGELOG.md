@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased
+## Unreleased (0.4.0)
+
+- Rename the project and PyPI distribution to Battery Data Steward
+  (`battery-data-steward`) and position it around inspection, quality assurance,
+  and evidence-aware preprocessing.
+- Preserve `bds`, the `battery_data_standard` module, public exception classes,
+  schema versions, and serialized export identifiers for compatibility.
+- Update installation guidance, optional-extra errors, CLI branding,
+  integration documentation, and the example notebook.
+- Document PyPI publishing migration and distinguish current capabilities from
+  planned research-readiness assessment. The new distribution must be published
+  before its PyPI installation command is available.
+
 
 - Follow up on preprocessing integrity: count only eligible interpolations
   against row limits, preserve interpolation dtypes, and report partial repairs.
