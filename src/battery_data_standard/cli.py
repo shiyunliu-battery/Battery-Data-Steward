@@ -1,4 +1,4 @@
-"""Command-line interface for battery_data_standard."""
+"""Command-line interface for Battery Data Steward."""
 
 from __future__ import annotations
 
@@ -47,7 +47,9 @@ EXIT_PARTIAL = 6
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="bds", description="Battery cycler converter and intake QA")
+    parser = argparse.ArgumentParser(
+        prog="bds", description="Battery Data Steward: battery data inspection, QA, and preprocessing"
+    )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--verbose", action="store_true", help="Enable informational logs on stderr.")
     parser.add_argument("--quiet", action="store_true", help="Suppress non-error logs.")

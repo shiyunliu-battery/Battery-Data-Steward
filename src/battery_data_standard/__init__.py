@@ -1,4 +1,4 @@
-"""Battery cycler conversion and intake QA library."""
+"""Battery Data Steward: battery data inspection, QA, and preprocessing."""
 
 from ._version import __version__
 from .api import (

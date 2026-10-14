@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Security fixes are applied to the latest released version of `battery-data-standard`.
+Security fixes are applied to the latest released version of `battery-data-steward`.
 This project is currently pre-1.0 beta software, so users deploying it in automated
 pipelines should pin versions and test upgrades before rollout.
 

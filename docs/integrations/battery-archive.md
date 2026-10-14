@@ -1,4 +1,4 @@
-# battery-data-standard + Battery Archive
+# battery-data-steward + Battery Archive
 
 ## Question
 
@@ -59,7 +59,7 @@ search, reuse, and analysis. The raw files are the provenance anchor.
 ```json
 {
   "dataset_title": "Example cycling dataset",
-  "source": "raw cycler exports converted with battery-data-standard",
+  "source": "raw cycler exports converted with battery-data-steward",
   "bds_version": "record from conversion report",
   "current_sign": "preserve",
   "files": [

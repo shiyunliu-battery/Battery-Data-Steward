@@ -48,7 +48,7 @@ def load_profile(profile: str | Path | dict[str, Any] | None) -> dict[str, Any]:
         except ImportError as exc:
             raise UnsupportedFeatureError(
                 "YAML profiles require the optional PyYAML dependency. "
-                "Install with battery-data-standard[yaml]."
+                "Install with battery-data-steward[yaml]."
             ) from exc
         data = yaml.safe_load(text)
         return data or {}

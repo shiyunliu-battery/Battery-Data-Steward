@@ -1,4 +1,4 @@
-# battery-data-standard + PyBaMM
+# battery-data-steward + PyBaMM
 
 ## Question
 
