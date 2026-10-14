@@ -35,10 +35,10 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/shiyunliu-battery/battery-data-standard"
-Issues = "https://github.com/shiyunliu-battery/battery-data-standard/issues"
-Changelog = "https://github.com/shiyunliu-battery/battery-data-standard/blob/main/CHANGELOG.md"
-Documentation = "https://github.com/shiyunliu-battery/battery-data-standard#readme"
+Repository = "https://github.com/shiyunliu-battery/Battery-Data-Steward"
+Issues = "https://github.com/shiyunliu-battery/Battery-Data-Steward/issues"
+Changelog = "https://github.com/shiyunliu-battery/Battery-Data-Steward/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/shiyunliu-battery/Battery-Data-Steward#readme"
 
 [project.optional-dependencies]
 yaml = ["PyYAML>=6.0"]

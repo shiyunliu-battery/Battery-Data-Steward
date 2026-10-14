@@ -5,20 +5,85 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish to PyPI and create a GitHub Release (main only)
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
 
+concurrency:
+  group: package-release
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      tag: ${{ steps.metadata.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Install build tools
-        run: python -m pip install build twine
+      - name: Install package and validation tools
+        run: python -m pip install -e ".[dev]"
+      - name: Verify release metadata and publishing configuration
+        id: metadata
+        env:
+          RELEASE_REQUESTED: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.publish == true }}
+          PYPI_ENABLED: ${{ vars.PYPI_TRUSTED_PUBLISHING }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+          from importlib.metadata import version
+
+          package_version = version("battery-data-steward")
+          if not re.fullmatch(r"\d+\.\d+\.\d+", package_version):
+              raise SystemExit("This workflow publishes stable X.Y.Z releases only.")
+          tag = f"v{package_version}"
+          ref = os.environ["GITHUB_REF"]
+          requested = os.environ["RELEASE_REQUESTED"] == "true"
+          if ref.startswith("refs/tags/") and ref != f"refs/tags/{tag}":
+              raise SystemExit("Version tag does not match the built package version.")
+          if requested:
+              if not ref.startswith("refs/tags/") and ref != "refs/heads/main":
+                  raise SystemExit("Manual publication must run from main.")
+              if os.environ.get("PYPI_ENABLED") != "true":
+                  raise SystemExit("Set repository variable PYPI_TRUSTED_PUBLISHING=true after configuring the new PyPI publisher.")
+              existing = subprocess.run(
+                  ["git", "rev-parse", "--verify", f"refs/tags/{tag}^{{commit}}"],
+                  capture_output=True, text=True,
+              )
+              if existing.returncode == 0 and existing.stdout.strip() != os.environ["GITHUB_SHA"]:
+                  raise SystemExit("The version tag already points to a different commit.")
+          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          section = re.search(
+              rf"^## {re.escape(package_version)} - \d{{4}}-\d{{2}}-\d{{2}}\n(.*?)(?=^## |\Z)",
+              changelog, re.MULTILINE | re.DOTALL,
+          )
+          if section is None:
+              raise SystemExit("Add a dated changelog section for this package version.")
+          Path("release-notes.md").write_text(section.group(1).strip() + "\n", encoding="utf-8")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={package_version}\ntag={tag}\n")
+          PY
+      - name: Lint, format and type checks
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
+          python -m mypy src
+      - name: Run tests
+        run: python -m pytest -q
       - name: Build distributions
         run: python -m build
       - name: Check distributions
@@ -35,12 +100,16 @@ jobs:
         with:
           name: dist
           path: dist/*
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: release-notes.md
 
   publish:
     needs: build
     runs-on: ubuntu-latest
     environment: pypi
-    if: startsWith(github.ref, 'refs/tags/v') && vars.PYPI_TRUSTED_PUBLISHING == 'true'
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish == true && github.ref == 'refs/heads/main')
     permissions:
       contents: read
       id-token: write
@@ -51,3 +120,30 @@ jobs:
           path: dist
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    needs: [build, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-notes
+          path: .
+      - name: Create release and upload distributions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --target "$RELEASE_COMMIT" \
+              --title "Battery Data Steward $RELEASE_TAG" --notes-file release-notes.md
+          fi
+          gh release upload "$RELEASE_TAG" dist/* --clobber

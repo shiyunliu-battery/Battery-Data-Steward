@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased (0.4.0)
+## Unreleased
+
+## 0.4.0 - 2026-10-14
 
 - Rename the project and PyPI distribution to Battery Data Steward
   (`battery-data-steward`) and position it around inspection, quality assurance,
@@ -12,7 +14,6 @@
 - Document PyPI publishing migration and distinguish current capabilities from
   planned research-readiness assessment. The new distribution must be published
   before its PyPI installation command is available.
-
 
 - Follow up on preprocessing integrity: count only eligible interpolations
   against row limits, preserve interpolation dtypes, and report partial repairs.
@@ -36,8 +37,10 @@
   requires explicit opt-in and skips known cycle/step boundaries and timer resets.
 - Honor explicit EIS degree/radian phase units; conventional unitless phase
   headers use degrees rather than guessing from value magnitude.
-- Reject invalid EIS source rows instead of silently writing a partial spectrum.
+- Reject nonempty invalid EIS source rows instead of silently writing a partial spectrum.
 - Reject empty EIS tables and unsupported EIS schema versions during validation.
+
+- Write the Unicode milliohm regression fixture explicitly as UTF-8 for Windows.
 
 - Added the unified `bds inspect` command and `bds.inspect()` API for
   non-mutating single-file detection, mapping, validation findings, and next
