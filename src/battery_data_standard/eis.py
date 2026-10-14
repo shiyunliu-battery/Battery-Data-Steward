@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import re
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -17,12 +18,18 @@ EIS_SCHEMA_VERSION = "eis-2026-05"
 EIS_REQUIRED_COLUMNS = ("Frequency_Hz", "Zre_exp_Ohm", "Zim_exp_Ohm")
 
 
-def read_eis(path: str | Path, *, sheet: str | int | None = None) -> pl.DataFrame:
+def read_eis(
+    path: str | Path, *, sheet: str | int | None = None, phase_unit: str | None = None
+) -> pl.DataFrame:
     """Read CSV/Excel-like EIS data into an eisfit-compatible table."""
     input_path = Path(path)
     result = read_table_with_metadata(input_path, options={"sheet": sheet, "excel_sheets": "eis"})
+    for key in ("empty_rows_skipped", "repeated_headers_skipped"):
+        count = result.metadata.get(key, 0)
+        if count:
+            warnings.warn(f"EIS input cleanup: {key}={count}.", UserWarning, stacklevel=2)
     raw = _add_frequency_values_from_sibling(input_path, result.data)
-    return normalize_eis_frame(raw)
+    return normalize_eis_frame(raw, phase_unit=phase_unit)
 
 
 def convert_eis(
@@ -31,10 +38,16 @@ def convert_eis(
     *,
     format: str = "csv",
     sheet: str | int | None = None,
+    phase_unit: str | None = None,
 ) -> ValidationReport:
     """Convert an EIS file into the package EIS standard table."""
-    df = read_eis(input_path, sheet=sheet)
+    with warnings.catch_warnings(record=True) as notices:
+        warnings.simplefilter("always", UserWarning)
+        df = read_eis(input_path, sheet=sheet, phase_unit=phase_unit)
     report = validate_eis(df)
+    report.issues.extend(
+        ValidationIssue("warning", "eis-normalization-notice", str(notice.message)) for notice in notices
+    )
     if not report.valid:
         raise ConversionError(
             "EIS validation failed: "
@@ -104,8 +117,28 @@ def validate_eis(df: pl.DataFrame, *, schema_version: str = EIS_SCHEMA_VERSION) 
     )
 
 
-def normalize_eis_frame(raw: pl.DataFrame) -> pl.DataFrame:
+def normalize_eis_frame(raw: pl.DataFrame, *, phase_unit: str | None = None) -> pl.DataFrame:
+    if phase_unit not in {None, "deg", "rad"}:
+        raise ConversionError("phase_unit must be deg or rad.")
     raw = _clean_columns(raw)
+    nonempty = (
+        pl.any_horizontal(
+            [
+                pl.col(column).cast(pl.String, strict=False).str.strip_chars().fill_null("") != ""
+                for column in raw.columns
+            ]
+        )
+        if raw.columns
+        else pl.lit(False)
+    )
+    filtered = raw.filter(nonempty)
+    if filtered.height != raw.height:
+        warnings.warn(
+            f"Skipped {raw.height - filtered.height} entirely empty EIS table rows.",
+            UserWarning,
+            stacklevel=2,
+        )
+    raw = filtered
     raw = _expand_complex_impedance_column(raw)
     freq_col = _find_column(
         raw.columns,
@@ -197,7 +230,9 @@ def normalize_eis_frame(raw: pl.DataFrame) -> pl.DataFrame:
     )
     if freq_col is None or zre_col is None or zim_col is None:
         if freq_col is not None and zmod_col is not None and phase_col is not None:
-            return _normalize_eis_magnitude_phase_frame(raw, freq_col, zmod_col, phase_col)
+            return _normalize_eis_magnitude_phase_frame(
+                raw, freq_col, zmod_col, phase_col, phase_unit=phase_unit
+            )
         raise ConversionError(
             "Could not infer EIS frequency, real impedance, and imaginary impedance columns. "
             f"Raw columns: {raw.columns}"
@@ -222,7 +257,7 @@ def normalize_eis_frame(raw: pl.DataFrame) -> pl.DataFrame:
             or f_value <= 0
         ):
             raise ConversionError(
-                f"Invalid EIS row at source data row {index + 1}; no rows were silently discarded."
+                f"Invalid EIS row at parsed table row {index + 1}; no rows were silently discarded."
             )
         row: dict[str, Any] = {
             "Frequency_Hz": f_value,
@@ -259,16 +294,25 @@ def looks_like_eis_columns(columns: list[str]) -> bool:
 
 
 def _normalize_eis_magnitude_phase_frame(
-    raw: pl.DataFrame, freq_col: str, zmod_col: str, phase_col: str
+    raw: pl.DataFrame, freq_col: str, zmod_col: str, phase_col: str, *, phase_unit: str | None = None
 ) -> pl.DataFrame:
     freq = _float_values(raw[freq_col])
     zmod = _float_values(raw[zmod_col])
     phase = _float_values(raw[phase_col])
     phase_slug = _slug(phase_col)
-    if "deg" in phase_slug or phase_slug in {"zphz", "phase", "zphase"}:
+    if phase_unit is not None:
+        phase_in_degrees = phase_unit == "deg"
+    elif "deg" in phase_slug:
         phase_in_degrees = True
     elif "rad" in phase_slug:
         phase_in_degrees = False
+    elif phase_slug in {"zphz", "phase", "zphase"}:
+        phase_in_degrees = True
+        warnings.warn(
+            "EIS phase unit is unspecified; degrees were assumed. Use phase_unit='rad' for radians or label the phase column explicitly.",
+            UserWarning,
+            stacklevel=2,
+        )
     else:
         raise ConversionError("EIS phase unit is ambiguous; label the column Phase(deg) or Phase(rad).")
 
@@ -285,7 +329,7 @@ def _normalize_eis_magnitude_phase_frame(
             or f_value <= 0
         ):
             raise ConversionError(
-                f"Invalid EIS row at source data row {index + 1}; no rows were silently discarded."
+                f"Invalid EIS row at parsed table row {index + 1}; no rows were silently discarded."
             )
         angle = math.radians(phase_value) if phase_in_degrees else phase_value
         zre = mag_value * math.cos(angle)

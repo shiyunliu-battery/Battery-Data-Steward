@@ -914,6 +914,7 @@ def _time_sampling_rows(value: Any) -> list[list[Any]]:
         ["Interval confidence", value.get("interval_confidence")],
         ["Missing sample points", value.get("missing_points")],
         ["Inserted rows", value.get("inserted_rows")],
+        ["Boundary points left unfilled", value.get("boundary_skipped_points")],
         ["Interpolation", value.get("interpolation_method")],
     ]
     gaps = value.get("gaps") or []
@@ -963,11 +964,14 @@ def _report_statement(payload: dict[str, Any]) -> str:
             "before downstream use."
         )
         time_sampling = payload.get("time_sampling") or {}
-        if time_sampling.get("status") == "repaired":
+        if time_sampling.get("status") in {"repaired", "partially-repaired"}:
             statement += (
                 " Missing sample points on the regular time grid were interpolated and recorded in the "
                 "Time Sampling section."
             )
+        skipped = time_sampling.get("boundary_skipped_points", 0)
+        if skipped:
+            statement += f" {skipped} missing points were left unfilled at segment boundaries."
         return statement
     if status == "converted-with-issues":
         return (

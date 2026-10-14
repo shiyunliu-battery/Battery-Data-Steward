@@ -97,7 +97,7 @@ def test_eis_rejects_invalid_source_rows_without_writing_partial_output(tmp_path
     headers = "Zmod,Phase(deg)" if polar else "Zreal,Zimag"
     source.write_text(f"Frequency_Hz,{headers}\n1000,0.1,-5\n100,,0\n10,0.3,-5\n")
     output = tmp_path / "output.csv"
-    with pytest.raises(ConversionError, match="source data row 2"):
+    with pytest.raises(ConversionError, match="parsed table row 2"):
         bds.convert_eis(source, output)
     assert not output.exists()
 

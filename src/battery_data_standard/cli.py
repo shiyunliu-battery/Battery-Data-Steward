@@ -201,7 +201,7 @@ def main(argv: list[str] | None = None) -> int:
     convert_parser.add_argument(
         "--current-sign",
         choices=("preserve", "discharge-positive", "charge-positive"),
-        default="charge-positive",
+        default=None,
     )
     convert_parser.add_argument(
         "--current-sign-check",
@@ -247,6 +247,7 @@ def main(argv: list[str] | None = None) -> int:
     convert_eis_parser.add_argument("input")
     convert_eis_parser.add_argument("output")
     convert_eis_parser.add_argument("--sheet")
+    convert_eis_parser.add_argument("--phase-unit", choices=("deg", "rad"))
     convert_eis_parser.add_argument("--format", choices=("csv", "parquet"), default="csv")
 
     validate_parser = subparsers.add_parser("validate", help="Validate a normalized data file")
@@ -287,7 +288,7 @@ def main(argv: list[str] | None = None) -> int:
     batch_parser.add_argument(
         "--current-sign",
         choices=("preserve", "discharge-positive", "charge-positive"),
-        default="charge-positive",
+        default=None,
     )
     batch_parser.add_argument(
         "--current-sign-check",
@@ -439,7 +440,9 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(report.to_json())
         elif args.command == "convert-eis":
-            report = convert_eis(args.input, args.output, format=args.format, sheet=args.sheet)
+            report = convert_eis(
+                args.input, args.output, format=args.format, sheet=args.sheet, phase_unit=args.phase_unit
+            )
             print(report.to_json())
         elif args.command == "validate":
             validation_report = validate_file(

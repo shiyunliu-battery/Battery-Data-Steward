@@ -36,3 +36,18 @@ after reading a file.
 Audit reports flag decreasing or negative cycle/step values. These warnings do
 not prove the file is wrong; they point to cases that need procedure-aware
 review before downstream aggregation.
+
+## Accumulator Reset Scope
+
+Cycle summaries must distinguish step-reset and cycle-reset capacity/energy.
+The default `summarize_cycles(df)` warns and reports Recorded Maximum labels.
+Choose `capacity_reset="cycle"` after confirming cycle resets, or
+`capacity_reset="step"` to sum maxima for consecutive step segments. These are
+not baseline-aware totals for truncated files or test-wide accumulators.
+Conversion metadata records `accumulator_reset_scope` from a mapping profile,
+otherwise `unknown`; this is a user declaration, not an inferred quality claim.
+
+An undirected source accumulator is preserved separately. Recognizable state
+labels determine directional capacity/energy; a BioLogic `Ns changes` flag is
+never treated as a cycle identifier. Unknown state labels no longer infer
+charge/discharge from the first character.

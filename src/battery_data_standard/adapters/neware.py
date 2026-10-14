@@ -44,6 +44,9 @@ class NewareAdapter(GenericAdapter):
         "channel voltage",
         "channel current",
         "电压(v)",
+        "循环号",
+        "工步号",
+        "工步类型",
     )
     column_aliases = {
         "test_time_s": (
@@ -91,8 +94,8 @@ class NewareAdapter(GenericAdapter):
             "电流(A)",
             "电流(mA)",
         ),
-        "cycle_index": ("Cycle ID", "Cycle", "Cycle Index"),
-        "step_index": ("Step ID", "Step", "Step Index"),
+        "cycle_index": ("Cycle ID", "Cycle", "Cycle Index", "循环号"),
+        "step_index": ("Step ID", "Step", "Step Index", "工步号"),
         "record_index": ("DataPoint", "Data Point", "Record ID", "Record", "Record Index"),
         "date_time": (
             "Realtime",
@@ -116,7 +119,6 @@ class NewareAdapter(GenericAdapter):
             "Charge_Capacity (mAh)",
             "Chg.Capacity(mAh)",
             "Chg. Capacity(mAh)",
-            "Capacity(mAh)",
             "充电容量(mAh)",
         ),
         "discharge_capacity_ah": (
@@ -1618,16 +1620,9 @@ def _strict_elapsed_seconds_from_datetimes(series: Any, pd: Any) -> tuple[list[f
 
 
 def _classify_neware_status(value: Any) -> str | None:
-    text = str(value).strip().lower()
-    if not text:
-        return None
-    if "dchg" in text or "discharge" in text or "dch" in text:
-        return "discharge"
-    if "chg" in text or "charge" in text or text.startswith("c"):
-        return "charge"
-    if text in {"r", "rest", "idle", "pause", "ocv", "open circuit"} or "rest" in text:
-        return "rest"
-    return None
+    from .normalization import _classify_status
+
+    return _classify_status(value)
 
 
 def _float_values(series: pl.Series) -> list[float | None]:

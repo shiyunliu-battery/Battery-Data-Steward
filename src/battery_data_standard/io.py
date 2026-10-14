@@ -21,7 +21,7 @@ import polars as pl
 
 from .exceptions import UnsupportedFeatureError, UnsupportedFormatError
 
-DEFAULT_ENCODINGS = ("utf-8-sig", "utf-8", "gb18030", "cp1252", "latin-1")
+DEFAULT_ENCODINGS = ("utf-8-sig", "utf-8", "cp1252", "gb18030", "latin-1")
 logger = logging.getLogger(__name__)
 
 
@@ -34,11 +34,22 @@ class TableReadResult:
 def read_text(path: str | Path, encodings: tuple[str, ...] = DEFAULT_ENCODINGS) -> tuple[str, str]:
     data = Path(path).read_bytes()
     last_error: UnicodeDecodeError | None = None
-    for encoding in encodings:
+    candidates: list[tuple[int, int, str, str]] = []
+    for index, encoding in enumerate(encodings):
         try:
-            return data.decode(encoding), encoding
+            decoded = data.decode(encoding)
         except UnicodeDecodeError as exc:
             last_error = exc
+            continue
+        if encoding.lower().startswith("utf"):
+            return decoded, encoding
+        sample = decoded[:65536].lower()
+        tokens = ("电压", "电流", "时间", "循环", "工步", "容量", "µa", "μa", "°c", "℃", "mω")
+        score = sum(10 for token in tokens if token in sample)
+        candidates.append((score, -index, decoded, encoding))
+    if candidates:
+        _score, _index, decoded, encoding = max(candidates)
+        return decoded, encoding
     if last_error is not None:
         raise last_error
     return data.decode("utf-8", errors="replace"), "utf-8"
@@ -85,13 +96,8 @@ def sample_text(path: str | Path, limit: int = 65536) -> str:
             return ("\t".join(str(col) for col in result.data.columns) + "\n")[:limit]
         except Exception:
             pass
-    data = path.read_bytes()[:limit]
-    for encoding in DEFAULT_ENCODINGS:
-        try:
-            return data.decode(encoding)
-        except UnicodeDecodeError:
-            continue
-    return data.decode("utf-8", errors="replace")
+    text, _encoding = read_text(path)
+    return text[:limit]
 
 
 def xlsx_sheet_names(path: str | Path) -> list[str]:
@@ -190,7 +196,7 @@ def read_table_with_metadata(
                 "raw_columns": list(data.columns),
             },
         )
-    text, _encoding = read_text(path, encodings)
+    text, _encoding = read_text(path, (str(options["encoding"]),) if options.get("encoding") else encodings)
     lines = text.splitlines()
     header_idx = find_biologic_mpt_header_line(text) if suffix == ".mpt" else find_header_line(text)
     delimiter = infer_delimiter_from_lines(lines[header_idx : header_idx + 25])
@@ -228,10 +234,20 @@ def read_table_with_metadata(
                 infer_schema_length=10000,
             )
             metadata["has_header"] = False
+        metadata["raw_rows"] = data.height
         data = _drop_unit_row(data)
-        data = _apply_positional_columns(data)
-        metadata.update({"backend": "polars", "raw_rows": data.height, "raw_columns": list(data.columns)})
+        before_cleaning = data.height
+        data = _drop_empty_rows(data)
+        metadata["empty_rows_skipped"] = before_cleaning - data.height
+        before_cleaning = data.height
+        data = _drop_repeated_header_rows(data)
+        metadata["repeated_headers_skipped"] = before_cleaning - data.height
+        if not options.get("allow_headerless"):
+            data = _apply_positional_columns(data)
+        metadata.update({"backend": "polars", "raw_columns": list(data.columns)})
         return TableReadResult(data, metadata)
+    except UnsupportedFormatError:
+        raise
     except Exception as exc:
         logger.info("polars CSV reader failed for %s; falling back to pandas: %s", path, exc)
         source.seek(0)
@@ -256,9 +272,17 @@ def read_table_with_metadata(
             )
             data = _pandas_to_polars(df)
             metadata["has_header"] = False
+        metadata["raw_rows"] = data.height
         data = _drop_unit_row(data)
-        data = _apply_positional_columns(data)
-        metadata.update({"backend": "pandas", "raw_rows": data.height, "raw_columns": list(data.columns)})
+        before_cleaning = data.height
+        data = _drop_empty_rows(data)
+        metadata["empty_rows_skipped"] = before_cleaning - data.height
+        before_cleaning = data.height
+        data = _drop_repeated_header_rows(data)
+        metadata["repeated_headers_skipped"] = before_cleaning - data.height
+        if not options.get("allow_headerless"):
+            data = _apply_positional_columns(data)
+        metadata.update({"backend": "pandas", "raw_columns": list(data.columns)})
         return TableReadResult(data, metadata)
 
 
@@ -375,6 +399,10 @@ def _preferred_excel_sheet_name(sheet_names: list[str], *, sheet_policy: str) ->
     if sheet_policy != "auto":
         return None
     channel_sheets = [name for name in sheet_names if _is_arbin_channel_sheet(name)]
+    if len(channel_sheets) > 1:
+        raise UnsupportedFormatError(
+            "Multiple channel sheets require an explicit sheet selection or batch excel_sheets='all'; channels are not silently merged or dropped."
+        )
     return channel_sheets[0] if channel_sheets else None
 
 
@@ -942,22 +970,37 @@ def _apply_positional_columns(data: pl.DataFrame) -> pl.DataFrame:
         return data
     if not _looks_like_generic_columns(data.columns):
         return data
-    first_row = data.row(0, named=True) if data.height else {}
-    values = [first_row.get(column) for column in data.columns]
-    if not values or not _looks_like_data_token(str(values[0])):
+    if data.is_empty():
         return data
-    rename = {
-        data.columns[0]: "Date Time",
-        data.columns[1]: "Cycle Count",
-        data.columns[2]: "Status",
-        data.columns[3]: "Test Time",
-        data.columns[4]: "Step Time",
-        data.columns[7]: "Step Type",
-        data.columns[8]: "Voltage (V)",
-        data.columns[9]: "Current (A)",
-        data.columns[10]: "Temperature (C)",
-    }
-    return data.rename({old: new for old, new in rename.items() if old in data.columns})
+    raise UnsupportedFormatError(
+        "Headerless wide tables require an explicit column-mapping profile; positional vendor layouts are not guessed."
+    )
+
+
+def _drop_repeated_header_rows(data: pl.DataFrame) -> pl.DataFrame:
+    if data.is_empty() or not data.columns:
+        return data
+    repeated = pl.all_horizontal(
+        [
+            pl.col(c).cast(pl.String, strict=False).str.strip_chars().str.to_lowercase()
+            == str(c).strip().lower()
+            for c in data.columns
+        ]
+    )
+    return data.filter(~repeated.fill_null(False))
+
+
+def _drop_empty_rows(data: pl.DataFrame) -> pl.DataFrame:
+    if data.is_empty() or not data.columns:
+        return data
+    return data.filter(
+        pl.any_horizontal(
+            [
+                pl.col(c).cast(pl.String, strict=False).str.strip_chars().fill_null("") != ""
+                for c in data.columns
+            ]
+        )
+    )
 
 
 def _drop_unit_row(data: pl.DataFrame) -> pl.DataFrame:

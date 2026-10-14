@@ -104,7 +104,7 @@ convert(
     metadata=None,
     strict=True,
     keep_raw=False,
-    current_sign="charge-positive",
+    current_sign=None,
     repair_policy="warn",
     time_sampling_policy="warn",
     time_sampling_interval_s=None,
@@ -161,7 +161,7 @@ bds.list_export_targets()
 ### `read_eis`
 
 ```python
-read_eis(path, sheet=None)
+read_eis(path, sheet=None, phase_unit=None)
 ```
 
 Reads an EIS file into the standardized EIS table.
@@ -169,7 +169,7 @@ Reads an EIS file into the standardized EIS table.
 ### `convert_eis`
 
 ```python
-convert_eis(input_path, output_path, format="csv", sheet=None)
+convert_eis(input_path, output_path, format="csv", sheet=None, phase_unit=None)
 ```
 
 Converts an EIS file and writes standardized CSV or Parquet output.
@@ -200,7 +200,7 @@ batch_convert(
     metadata=None,
     strict=True,
     keep_raw=False,
-    current_sign="charge-positive",
+    current_sign=None,
     repair_policy="warn",
     time_sampling_policy="warn",
     time_sampling_interval_s=None,
@@ -539,8 +539,27 @@ subclasses:
 `ValidationFailed` carries the validation report that caused strict validation to
 fail.
 
-EIS normalization rejects invalid numeric or non-positive-frequency rows with
-the source data row number rather than silently dropping them. Explicit phase
-headers containing `deg` or `rad` determine the unit. Conventional unitless
-`Zphz`, `Zphase`, and `Phase` headers mean degrees; radian inputs should use
-`Phase(rad)`. Empty EIS tables fail validation.
+EIS input cleanup skips entirely empty rows and exact repeated header rows with
+notices, while partly invalid rows and non-positive frequencies still fail.
+`phase_unit="deg"` or `"rad"` explicitly sets phase units. Without an override,
+explicit column units take precedence; unitless phase headers assume degrees
+with a warning. `convert_eis` retains notices in `ValidationReport.issues`.
+
+Time-series mapping profiles accept `date_order` (`dayfirst` or `monthfirst`),
+`encoding`, `decimal_separator` (`"."` or `","`), and `accumulator_reset_scope`. Dotted dates default to day-first;
+slash dates default to month-first with a warning. Headerless wide tables need
+explicit column mappings. Unknown status labels preserve recorded current;
+source power is preserved with a warning if current values change sign.
+
+`convert` and `batch_convert` use target-aware current signs when `current_sign`
+is omitted: discharge-positive for PyBaMM and charge-positive otherwise.
+
+`summarize_cycles(df, capacity_reset="unknown")` reports maxima with an explicit
+warning and Recorded Maximum labels. `capacity_reset="cycle"` uses per-cycle
+maxima; `"step"` sums consecutive step-segment maxima, including repeated step
+identifiers. Both require complete zero-based accumulator coverage. Test-wide
+accumulators require a separate baseline-aware calculation.
+
+Batch `excel_sheets="all"` records individual successes and failures and continues
+unless fail-fast is requested. Multiple Arbin channel sheets require explicit
+selection or per-sheet batch conversion.

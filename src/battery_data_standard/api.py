@@ -38,7 +38,7 @@ from .export import (
 from .io import read_bds_like, write_dataframe, write_json, write_jsonl
 from .kind import DataKindResult
 from .kind import detect_kind as _detect_kind
-from .profiles import load_profile
+from .profiles import load_profile, profile_column_map
 from .quality import quality_checks
 from .reports import ConversionReport, DetectionResult, ValidationReport
 from .schema import BDS_SCHEMA_VERSION
@@ -89,11 +89,13 @@ def detect_kind(path: str | Path, *, sheet: str | int | None = None) -> DataKind
     return _detect_kind(input_path, sheet=sheet)
 
 
-def read_eis(path: str | Path, *, sheet: str | int | None = None) -> pl.DataFrame:
+def read_eis(
+    path: str | Path, *, sheet: str | int | None = None, phase_unit: str | None = None
+) -> pl.DataFrame:
     """Read EIS data into an eisfit-compatible standardized table."""
     input_path = Path(path)
     _ensure_input_file(input_path)
-    return _read_eis(input_path, sheet=sheet)
+    return _read_eis(input_path, sheet=sheet, phase_unit=phase_unit)
 
 
 def validate_eis(df: pl.DataFrame) -> ValidationReport:
@@ -195,7 +197,11 @@ def read_with_report(
     _ensure_input_file(input_path)
     try:
         profile_data = load_profile(profile)
-        options = {"sheet": sheet}
+        options = {
+            "sheet": sheet,
+            "encoding": profile_data.get("encoding"),
+            "allow_headerless": bool(profile_column_map(profile_data)),
+        }
         detection = detect_adapter(input_path)
         if cycler is None or cycler == "auto":
             adapter, result = _auto_process_timeseries(
@@ -297,7 +303,7 @@ def convert(
     metadata: dict[str, Any] | str | Path | None = None,
     strict: bool = True,
     keep_raw: bool = False,
-    current_sign: str = "charge-positive",
+    current_sign: str | None = None,
     repair_policy: str = "warn",
     time_sampling_policy: str = "warn",
     time_sampling_interval_s: float | None = None,
@@ -322,6 +328,11 @@ def convert(
     ConversionReport
         Serializable report describing the conversion and validation result.
     """
+    if current_sign is None:
+        current_sign = (
+            "discharge-positive" if normalize_export_target(target) == "pybamm" else "charge-positive"
+        )
+
     df, report = read_with_report(
         input_path,
         cycler=cycler,
@@ -386,7 +397,7 @@ def convert_neware_groups(
     metadata: dict[str, Any] | str | Path | None = None,
     strict: bool = True,
     keep_raw: bool = False,
-    current_sign: str = "charge-positive",
+    current_sign: str | None = None,
     repair_policy: str = "warn",
     time_sampling_policy: str = "warn",
     time_sampling_interval_s: float | None = None,
@@ -398,6 +409,10 @@ def convert_neware_groups(
     target: str = "bds",
 ) -> list[ConversionReport]:
     """Convert content-grouped NEWARE record exports into one output per test."""
+    if current_sign is None:
+        current_sign = (
+            "discharge-positive" if normalize_export_target(target) == "pybamm" else "charge-positive"
+        )
     groups = group_neware_record_files(paths)
     profile_data = load_profile(profile)
     user_metadata = _load_metadata(metadata)
@@ -512,7 +527,7 @@ def batch_convert(
     metadata: dict[str, Any] | str | Path | None = None,
     strict: bool = True,
     keep_raw: bool = False,
-    current_sign: str = "charge-positive",
+    current_sign: str | None = None,
     repair_policy: str = "warn",
     time_sampling_policy: str = "warn",
     time_sampling_interval_s: float | None = None,
@@ -527,6 +542,11 @@ def batch_convert(
     target: str = "bds",
 ) -> list[dict[str, Any]]:
     """Convert a directory or archive of raw exports and optionally write a JSONL manifest."""
+    if current_sign is None:
+        current_sign = (
+            "discharge-positive" if normalize_export_target(target) == "pybamm" else "charge-positive"
+        )
+
     input_root = Path(input_dir)
     if not input_root.exists():
         raise FileIOError(f"Input path does not exist: {input_root}")
@@ -570,6 +590,7 @@ def batch_convert(
                         target=target,
                         archive_path=source.archive_path,
                         archive_member=source.archive_member,
+                        fail_fast=fail_fast,
                     )
                 )
             except Exception as exc:
@@ -639,12 +660,13 @@ def convert_eis(
     *,
     format: str = "csv",
     sheet: str | int | None = None,
+    phase_unit: str | None = None,
 ) -> ValidationReport:
     """Convert an EIS file to an eisfit-compatible standardized table."""
     input_path = Path(input_path)
     _ensure_input_file(input_path)
     try:
-        return _convert_eis(input_path, output_path, format=format, sheet=sheet)
+        return _convert_eis(input_path, output_path, format=format, sheet=sheet, phase_unit=phase_unit)
     except BatteryDataStandardError:
         raise
     except OSError as exc:
@@ -868,6 +890,7 @@ def _batch_convert_one(
     target: str,
     archive_path: Path | None,
     archive_member: str | None,
+    fail_fast: bool = False,
 ) -> list[dict[str, Any]]:
     sheet_values: list[str | int | None] = [sheet]
     if path.suffix.lower() in {".xlsx", ".xls"} and excel_sheets in {"all", "first"} and sheet is None:
@@ -878,76 +901,99 @@ def _batch_convert_one(
 
     records: list[dict[str, Any]] = []
     for sheet_value in sheet_values:
-        kind = detect_kind(path, sheet=sheet_value)
-        output_suffix = "eis" if kind.kind == "eis" else output_suffix_for_target(target)
-        sheet_stem = f"{relative.stem}_{sheet_value}" if sheet_value is not None else relative.stem
-        output_path = output_root / relative.parent / f"{sheet_stem}.{output_suffix}.{format}"
-        base_record = {
-            "input_path": str(path),
-            "archive_path": str(archive_path) if archive_path else None,
-            "archive_member": archive_member,
-            "sheet_name": sheet_value,
-            "data_kind": kind.kind,
-            "kind_confidence": kind.confidence,
-            "kind_reason": kind.reason,
-        }
-        if kind.kind == "unsupported":
-            records.append(
-                {
-                    "status": "unsupported",
-                    "record_type": "skipped",
-                    "output_path": None,
-                    "skip_reason": kind.reason,
-                    **base_record,
-                }
+        try:
+            kind = detect_kind(path, sheet=sheet_value)
+            if (
+                kind.kind == "unsupported"
+                and profile_column_map(load_profile(profile))
+                and path.suffix.lower() in {".csv", ".txt", ".tsv"}
+            ):
+                kind = DataKindResult("timeseries", 1.0, "Explicit time-series mapping profile", str(path))
+            output_suffix = "eis" if kind.kind == "eis" else output_suffix_for_target(target)
+            sheet_stem = f"{relative.stem}_{sheet_value}" if sheet_value is not None else relative.stem
+            output_path = output_root / relative.parent / f"{sheet_stem}.{output_suffix}.{format}"
+            base_record = {
+                "input_path": str(path),
+                "archive_path": str(archive_path) if archive_path else None,
+                "archive_member": archive_member,
+                "sheet_name": sheet_value,
+                "data_kind": kind.kind,
+                "kind_confidence": kind.confidence,
+                "kind_reason": kind.reason,
+            }
+            if kind.kind == "unsupported":
+                records.append(
+                    {
+                        "status": "unsupported",
+                        "record_type": "skipped",
+                        "output_path": None,
+                        "skip_reason": kind.reason,
+                        **base_record,
+                    }
+                )
+                continue
+            if kind.kind == "eis":
+                report = convert_eis(path, output_path, format=format, sheet=sheet_value)
+                records.append(
+                    {
+                        "status": "ok",
+                        "record_type": "converted",
+                        "output_path": str(output_path),
+                        "validation": report.to_dict(),
+                        "rows": report.rows,
+                        "columns": report.columns,
+                        **base_record,
+                    }
+                )
+                continue
+
+            report = convert(
+                path,
+                output_path,
+                format=format,
+                cycler=cycler,
+                profile=profile,
+                metadata=metadata,
+                strict=strict,
+                keep_raw=keep_raw,
+                current_sign=current_sign,
+                repair_policy=repair_policy,
+                time_sampling_policy=time_sampling_policy,
+                time_sampling_interval_s=time_sampling_interval_s,
+                time_sampling_interpolation=time_sampling_interpolation,
+                time_sampling_tolerance=time_sampling_tolerance,
+                time_sampling_max_inserted_rows=time_sampling_max_inserted_rows,
+                detection_threshold=detection_threshold,
+                current_sign_check=current_sign_check,
+                write_sidecars=write_sidecars,
+                sheet=sheet_value,
+                target=target,
             )
-            continue
-        if kind.kind == "eis":
-            report = convert_eis(path, output_path, format=format, sheet=sheet_value)
             records.append(
                 {
                     "status": "ok",
                     "record_type": "converted",
-                    "output_path": str(output_path),
-                    "validation": report.to_dict(),
-                    "rows": report.rows,
-                    "columns": report.columns,
                     **base_record,
+                    **report.to_dict(),
+                    "data_kind": "timeseries",
                 }
             )
-            continue
-
-        report = convert(
-            path,
-            output_path,
-            format=format,
-            cycler=cycler,
-            profile=profile,
-            metadata=metadata,
-            strict=strict,
-            keep_raw=keep_raw,
-            current_sign=current_sign,
-            repair_policy=repair_policy,
-            time_sampling_policy=time_sampling_policy,
-            time_sampling_interval_s=time_sampling_interval_s,
-            time_sampling_interpolation=time_sampling_interpolation,
-            time_sampling_tolerance=time_sampling_tolerance,
-            time_sampling_max_inserted_rows=time_sampling_max_inserted_rows,
-            detection_threshold=detection_threshold,
-            current_sign_check=current_sign_check,
-            write_sidecars=write_sidecars,
-            sheet=sheet_value,
-            target=target,
-        )
-        records.append(
-            {
-                "status": "ok",
-                "record_type": "converted",
-                **base_record,
-                **report.to_dict(),
-                "data_kind": "timeseries",
-            }
-        )
+        except Exception as exc:
+            if fail_fast:
+                raise
+            records.append(
+                {
+                    "status": "error",
+                    "record_type": "error",
+                    "input_path": str(path),
+                    "output_path": None,
+                    "sheet_name": sheet_value,
+                    "archive_path": str(archive_path) if archive_path else None,
+                    "archive_member": archive_member,
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                }
+            )
     return records
 
 
