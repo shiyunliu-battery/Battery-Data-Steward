@@ -28,7 +28,7 @@ jobs:
           python -m venv smoke-venv
           . smoke-venv/bin/activate
           python -m pip install dist/*.whl
-          python -c "import battery_data_standard; print(battery_data_standard.__version__)"
+          python -c "from importlib.metadata import version; import bds, battery_data_standard; assert version('battery-data-steward') == bds.__version__ == battery_data_standard.__version__; assert bds.read is battery_data_standard.read; print(bds.__version__)"
           bds --version
           bds inspect-schema
       - uses: actions/upload-artifact@v7

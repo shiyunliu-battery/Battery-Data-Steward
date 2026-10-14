@@ -3,17 +3,17 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "battery-data-standard"
+name = "battery-data-steward"
 dynamic = ["version"]
-description = "Converters and intake QA for battery cycler data."
+description = "Evidence-aware battery data inspection, quality assurance, and preprocessing."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
-  {name = "Battery Data Standard contributors"}
+  {name = "Battery Data Steward contributors"}
 ]
-keywords = ["battery", "cycler", "data-conversion", "data-standardization", "neware", "arbin"]
+keywords = ["battery", "cycler", "data-conversion", "data-quality", "preprocessing", "provenance", "eis", "neware", "arbin"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",

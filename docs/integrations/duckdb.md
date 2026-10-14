@@ -1,4 +1,4 @@
-# battery-data-standard + DuckDB
+# battery-data-steward + DuckDB
 
 ## Question
 

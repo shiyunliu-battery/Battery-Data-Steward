@@ -13,6 +13,7 @@ from .exceptions import ConversionError
 from .reports import ValidationIssue, ValidationReport
 from .schema import canonical_label_for
 
+# Retain the serialized identifier so existing report consumers remain compatible.
 EXPORT_FORMAT_VERSION = "battery-data-standard-export-v1"
 
 
@@ -25,7 +26,7 @@ class ExportTarget:
 
 
 EXPORT_TARGETS: tuple[ExportTarget, ...] = (
-    ExportTarget("bds", "Default Battery Data Standard CSV/Parquet export.", "csv", "bds"),
+    ExportTarget("bds", "Default Battery Data Steward CSV/Parquet export.", "csv", "bds"),
     ExportTarget("bdf", "Legacy BDF-compatible CSV/Parquet export.", "csv", "bdf"),
     ExportTarget("duckdb", "Analysis-ready table for DuckDB SQL workflows.", "parquet", "duckdb"),
     ExportTarget("polars", "Analysis-ready table for Polars workflows.", "parquet", "polars"),
@@ -50,6 +51,8 @@ _EXPORT_TARGET_ALIASES = {
     "standard": "bds",
     "battery_data_standard": "bds",
     "battery-data-standard": "bds",
+    "battery-data-steward": "bds",
+    "battery_data_steward": "bds",
     "battery_archive": "battery-archive",
     "archive": "battery-archive",
     "py-bamm": "pybamm",

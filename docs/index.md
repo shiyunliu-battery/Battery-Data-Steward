@@ -1,8 +1,11 @@
 # Documentation
 
-This directory contains public documentation for `battery-data-standard`.
+This directory contains public documentation for `battery-data-steward`.
 
 ## User Documentation
+
+- [Project direction and roadmap](project-direction.md)
+- [Package migration and publishing](releasing.md)
 
 - [Python API reference](api-reference.md)
 - [Supported formats](supported-formats.md)
