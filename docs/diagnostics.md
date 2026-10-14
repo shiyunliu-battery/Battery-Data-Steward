@@ -139,7 +139,8 @@ bds.convert(
 )
 ```
 
-The default `time_sampling_policy="repair"` inserts missing rows only when a
+The default `time_sampling_policy="warn"` records gaps without inserting rows.
+Explicit `time_sampling_policy="repair"` inserts missing rows only when a
 regular interval is detected or supplied. Numeric measurement columns are
 interpolated with `time_sampling_interpolation="linear"` by default. Use
 `time_sampling_policy="warn"` to record gaps without inserting rows, or use
@@ -171,3 +172,8 @@ coverage is reported separately under `completeness`.
 2. Review mapping, units, current sign evidence, and validation issues.
 3. Run `bds convert --report auto` once the diagnostic looks right.
 4. Run `bds audit` on the whole folder before batch conversion.
+
+Sampling repairs skip known cycle/step boundaries, missing segment identifiers,
+and step-time resets. Reports include `boundary_skipped_points` and distinguish
+partial repair from fully repaired gaps. Without segment fields, protocol
+boundaries cannot be established automatically.

@@ -26,7 +26,7 @@ read(
     keep_raw=False,
     current_sign="charge-positive",
     repair_policy="warn",
-    time_sampling_policy="repair",
+    time_sampling_policy="warn",
     time_sampling_interval_s=None,
     time_sampling_interpolation="linear",
     time_sampling_tolerance=0.1,
@@ -68,7 +68,8 @@ df = bds.read(
 `repair_policy="repair"` applies documented repairs such as shifting elapsed
 test time to start at zero.
 
-`time_sampling_policy="repair"` checks regular `test_time_s` sampling and
+The default `time_sampling_policy="warn"` reports gaps without insertion.
+Explicit `time_sampling_policy="repair"` checks regular `test_time_s` sampling and
 inserts missing samples only when a fixed interval is detected or supplied. Use
 `time_sampling_policy="warn"` to report missing time points without insertion,
 or set `time_sampling_interval_s=1`, `2`, `10`, or another protocol interval.
@@ -105,7 +106,7 @@ convert(
     keep_raw=False,
     current_sign="charge-positive",
     repair_policy="warn",
-    time_sampling_policy="repair",
+    time_sampling_policy="warn",
     time_sampling_interval_s=None,
     time_sampling_interpolation="linear",
     time_sampling_tolerance=0.1,
@@ -201,7 +202,7 @@ batch_convert(
     keep_raw=False,
     current_sign="charge-positive",
     repair_policy="warn",
-    time_sampling_policy="repair",
+    time_sampling_policy="warn",
     time_sampling_interval_s=None,
     time_sampling_interpolation="linear",
     time_sampling_tolerance=0.1,
@@ -537,3 +538,9 @@ subclasses:
 
 `ValidationFailed` carries the validation report that caused strict validation to
 fail.
+
+EIS normalization rejects invalid numeric or non-positive-frequency rows with
+the source data row number rather than silently dropping them. Explicit phase
+headers containing `deg` or `rad` determine the unit. Conventional unitless
+`Zphz`, `Zphase`, and `Phase` headers mean degrees; radian inputs should use
+`Phase(rad)`. Empty EIS tables fail validation.

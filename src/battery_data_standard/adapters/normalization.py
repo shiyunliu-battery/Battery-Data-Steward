@@ -72,8 +72,8 @@ def normalize_raw_frame(
 
     _derive_datetime_columns(output, raw, state)
     _derive_test_time(output, state)
-    _derive_power(output, state)
     _apply_current_sign(output, raw, state, current_sign, raw_current_sign)
+    _derive_power(output, state)
 
     if keep_raw:
         for col in raw.columns:

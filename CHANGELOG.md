@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Compute derived power after current-sign normalization.
+- Change conversion and batch sampling defaults to warning-only; interpolation
+  requires explicit opt-in and skips known cycle/step boundaries and timer resets.
+- Honor explicit EIS degree/radian phase units; conventional unitless phase
+  headers use degrees rather than guessing from value magnitude.
+- Reject invalid EIS source rows instead of silently writing a partial spectrum.
+- Reject empty EIS tables and unsupported EIS schema versions during validation.
+
 - Added the unified `bds inspect` command and `bds.inspect()` API for
   non-mutating single-file detection, mapping, validation findings, and next
   steps.

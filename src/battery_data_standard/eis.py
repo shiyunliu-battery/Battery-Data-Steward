@@ -46,6 +46,14 @@ def convert_eis(
 
 def validate_eis(df: pl.DataFrame, *, schema_version: str = EIS_SCHEMA_VERSION) -> ValidationReport:
     issues: list[ValidationIssue] = []
+    if schema_version != EIS_SCHEMA_VERSION:
+        issues.append(
+            ValidationIssue(
+                "error", "unsupported-eis-schema-version", f"Unsupported EIS schema version {schema_version}."
+            )
+        )
+    if df.is_empty():
+        issues.append(ValidationIssue("error", "empty-eis-dataframe", "EIS dataframe has no rows."))
     for column in EIS_REQUIRED_COLUMNS:
         if column not in df.columns:
             issues.append(
@@ -132,13 +140,17 @@ def normalize_eis_frame(raw: pl.DataFrame) -> pl.DataFrame:
     phase_col = _find_column(
         raw.columns,
         (
-            "Zphz",
-            "Zphase",
             "Zphase_deg",
-            "Phase",
             "Phase(deg)",
             "Phase (deg)",
             "Phase_exp_deg",
+            "Phase(rad)",
+            "Phase (rad)",
+            "Phase_rad",
+            "Zphase_rad",
+            "Zphz",
+            "Zphase",
+            "Phase",
         ),
     )
     zre_col = _find_column(
@@ -209,7 +221,9 @@ def normalize_eis_frame(raw: pl.DataFrame) -> pl.DataFrame:
             or not math.isfinite(zi_value)
             or f_value <= 0
         ):
-            continue
+            raise ConversionError(
+                f"Invalid EIS row at source data row {index + 1}; no rows were silently discarded."
+            )
         row: dict[str, Any] = {
             "Frequency_Hz": f_value,
             "Zre_exp_Ohm": zr_value,
@@ -250,8 +264,13 @@ def _normalize_eis_magnitude_phase_frame(
     freq = _float_values(raw[freq_col])
     zmod = _float_values(raw[zmod_col])
     phase = _float_values(raw[phase_col])
-    phase_values = [value for value in phase if value is not None and math.isfinite(value)]
-    phase_in_degrees = bool(phase_values and max(abs(value) for value in phase_values) > (2 * math.pi))
+    phase_slug = _slug(phase_col)
+    if "deg" in phase_slug or phase_slug in {"zphz", "phase", "zphase"}:
+        phase_in_degrees = True
+    elif "rad" in phase_slug:
+        phase_in_degrees = False
+    else:
+        raise ConversionError("EIS phase unit is ambiguous; label the column Phase(deg) or Phase(rad).")
 
     rows: list[dict[str, Any]] = []
     context_columns = [col for col in raw.columns if col not in {freq_col, zmod_col, phase_col}]
@@ -265,7 +284,9 @@ def _normalize_eis_magnitude_phase_frame(
             or not math.isfinite(phase_value)
             or f_value <= 0
         ):
-            continue
+            raise ConversionError(
+                f"Invalid EIS row at source data row {index + 1}; no rows were silently discarded."
+            )
         angle = math.radians(phase_value) if phase_in_degrees else phase_value
         zre = mag_value * math.cos(angle)
         zim = mag_value * math.sin(angle)

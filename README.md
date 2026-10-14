@@ -189,7 +189,7 @@ df = bds.read(
     cycler="auto",
     current_sign="preserve",
     repair_policy="repair",
-    time_sampling_policy="repair",
+    time_sampling_policy="warn",
 )
 ```
 
@@ -199,12 +199,14 @@ charge/discharge sign convention from the instrument. Use
 such as shifting elapsed test time to start at zero or sorting non-monotonic time
 values.
 
-When a fixed sampling interval is detected, BDS checks for missing time points.
-By default, missing points on that regular grid are interpolated with
-`time_sampling_interpolation="linear"` and recorded in the conversion report.
-Use `time_sampling_policy="warn"` to report gaps without inserting rows, or set
-`time_sampling_interval_s=1`, `2`, `10`, or another known interval when the
-sampling cadence is defined by the test protocol.
+When a fixed sampling interval is detected, BDS reports missing time points by
+default (`time_sampling_policy="warn"`) without inserting rows. Explicitly set
+`time_sampling_policy="repair"` to insert samples with
+`time_sampling_interpolation="linear"`. Repairs skip gaps across known cycle or
+step boundaries, unknown segment identifiers, and step-time resets. If segment
+fields are absent, BDS cannot establish protocol boundaries: review the protocol
+before enabling interpolation. Set `time_sampling_interval_s` when the cadence
+is known.
 
 Use an explicit cycler when the source format is known:
 
@@ -295,6 +297,11 @@ bds convert-eis impedance.csv normalized.eis.csv
 eis = bds.read_eis("impedance.csv")
 report = bds.convert_eis("impedance.csv", "normalized.eis.csv")
 ```
+
+EIS conversion rejects invalid source rows rather than silently dropping them.
+Phase columns labeled with `deg` or `rad` use that unit. Conventional unitless
+headers `Zphz`, `Zphase`, and `Phase` are interpreted as degrees; label radian
+values explicitly as `Phase(rad)`.
 
 `read()` and `convert()` are time-series entry points. `batch` and
 `batch_convert()` can route mixed directories and archives that contain
