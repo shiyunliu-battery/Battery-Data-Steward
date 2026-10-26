@@ -79,11 +79,10 @@ def test_inspect_error_keeps_headerless_file_blocked(tmp_path):
     report = inspect(path, cycler="generic")
     assert report.readable is False
     assert report.inspection_status in {"failed", "unsupported"}
-    if "Headerless wide tables" in (report.error or ""):
-        assert report.mapping_suggestions is not None
-        assert report.mapping_suggestions["status"] == "needs_confirmation"
-        assert "Unapproved mapping suggestions" in report.to_text()
-        assert report.to_dict()["mapping_suggestions"]["candidates"]
+    assert report.mapping_suggestions is not None
+    assert report.mapping_suggestions["status"] == "needs_confirmation"
+    assert "Unapproved mapping suggestions" in report.to_text()
+    assert report.to_dict()["mapping_suggestions"]["candidates"]
     assert path.read_text(encoding="utf-8").count("\n") == 2
 
 
