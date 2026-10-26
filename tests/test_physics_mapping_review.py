@@ -30,6 +30,7 @@ def _two_row_headerless(path: Path) -> None:
         encoding="utf-8",
     )
 
+
 def test_headerless_backend_names_are_stably_one_based(tmp_path):
     """The position labels must not shift with pandas or Polars releases."""
     from battery_data_standard.io import (
