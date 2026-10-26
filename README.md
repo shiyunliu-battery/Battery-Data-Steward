@@ -19,6 +19,7 @@ supported time-series and EIS data to CSV or Parquet with review reports.
 
 ```bash
 bds inspect raw_export.csv
+bds inspect unknown_headerless.csv --format json  # Candidate columns only; not applied
 ```
 
 Inspection is local and non-mutating. It does not modify the source file,
