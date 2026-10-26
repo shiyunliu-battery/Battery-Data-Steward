@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 import re
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +32,7 @@ def _finite_number(value: Any) -> float | None:
 
 def _is_increasing(values: list[float]) -> bool:
     return len(values) > 1 and all(
-        later >= earlier for earlier, later in zip(values, values[1:])
+        later >= earlier for earlier, later in pairwise(values)
     ) and values[-1] > values[0]
 
 
@@ -43,7 +44,7 @@ def _power_relation(
     """Compare independent power samples under both possible sign conventions."""
     selected = [
         (v * i, p)
-        for v, i, p in zip(voltage, current, observed_power)
+        for v, i, p in zip(voltage, current, observed_power, strict=False)
         if all(math.isfinite(x) for x in (v, i, p)) and abs(v * i) > 0.05
     ]
     if len(selected) < MIN_RELATION_POINTS:
@@ -222,7 +223,7 @@ def suggest_headerless_columns(
         report["status"] = "not_assessable"
         report["limitations"].append("Source sample is empty, too wide or contains fewer than two rows.")
         return report
-    report["sampled_rows"] = int(len(sampled))
+    report["sampled_rows"] = len(sampled)
     report["sampled_columns"] = int(sampled.shape[1])
     numeric: dict[str, list[float]] = {}
     time_candidates: dict[str, list[float]] = {}
