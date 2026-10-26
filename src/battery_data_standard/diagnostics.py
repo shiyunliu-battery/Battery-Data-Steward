@@ -11,6 +11,7 @@ from typing import Any
 from .api import detect, detect_kind, read_eis, read_with_report
 from .eis import validate_eis
 from .exceptions import BatteryDataStandardError, FileIOError
+from .physics_mapping import review_mapped_physics
 from .export import to_export_frame
 from .reports import ColumnProvenance
 
@@ -42,6 +43,7 @@ class ExplainReport:
     warnings: list[str] = field(default_factory=list)
     unmapped_columns: list[str] = field(default_factory=list)
     time_sampling: dict[str, Any] | None = None
+    physics_checks: list[dict[str, Any]] = field(default_factory=list)
     recommended_next_action: str = ""
     error_type: str | None = None
     error: str | None = None
@@ -75,6 +77,10 @@ class ExplainReport:
             lines.append(f"Temperature warning: {self.temperature_semantics.get('reason')}")
         if self.validation:
             lines.append(f"Validation valid: {self.validation.get('valid')}")
+        if self.physics_checks:
+            lines.append("Physics consistency (advisory; does not verify mapping):")
+            for check in self.physics_checks[:8]:
+                lines.append(f"- {check.get('check')}: {check.get('status')}")
         if self.time_sampling:
             lines.append(f"Time sampling: {self.time_sampling.get('status')}")
             missing = self.time_sampling.get("missing_points")
@@ -194,6 +200,7 @@ def explain(
             warnings=report.warnings,
             unmapped_columns=report.unmapped_columns,
             time_sampling=report.metadata.get("time_sampling"),
+            physics_checks=review_mapped_physics(df, report.provenance),
             recommended_next_action=_next_action(status, report.cycler),
         )
     except BatteryDataStandardError as exc:
