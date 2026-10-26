@@ -25,7 +25,7 @@ jobs:
       - name: Lint
         run: python -m ruff check .
       - name: Format check
-        run: python -m ruff format --diff .
+        run: python -m ruff format --check .
       - name: Type check
         run: python -m mypy src
       - name: Dependency audit
