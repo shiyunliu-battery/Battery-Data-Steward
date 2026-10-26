@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add advisory physics-informed inspection: unapproved candidate columns for
+  unknown headerless tables and non-mutating power/capacity consistency screens
+  for independently sourced measured fields. No automatic column assignment
+  or conversion acceptance is introduced.
+- Stabilize one-based positional field labels across Polars/pandas versions
+  for unlabeled CSV inputs, and correct the two-row headerless regression mapping
+  (time/voltage/current columns 4/9/10).
+
 ## 0.4.0 - 2026-10-14
 
 - Rename the project and PyPI distribution to Battery Data Steward

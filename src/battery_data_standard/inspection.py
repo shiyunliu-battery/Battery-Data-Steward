@@ -11,6 +11,7 @@ from typing import Any
 from .diagnostics import ExplainReport, explain
 from .doctor import _fixture_checklist, _suggestions, _suspicious_headers
 from .exceptions import ConversionError
+from .physics_mapping import suggest_headerless_columns
 
 INSPECTION_REPORT_VERSION = "bds-inspection-v1"
 MAX_INSPECTION_FINDINGS = 500
@@ -35,6 +36,8 @@ class InspectionReport:
     canonical_columns: list[str] = field(default_factory=list)
     target_columns: list[str] = field(default_factory=list)
     column_mapping: list[dict[str, Any]] = field(default_factory=list)
+    mapping_suggestions: dict[str, Any] | None = None
+    physics_checks: list[dict[str, Any]] = field(default_factory=list)
     unit_transforms: list[dict[str, Any]] = field(default_factory=list)
     current_sign: str | None = None
     current_sign_evidence: str | None = None
@@ -119,6 +122,17 @@ class InspectionReport:
             if len(self.column_mapping) > 20:
                 lines.append(f"- ... {len(self.column_mapping) - 20} additional mapping(s) in JSON")
 
+        if self.mapping_suggestions:
+            lines.extend(["", "Unapproved mapping suggestions (confirmation required):"])
+            for item in self.mapping_suggestions.get("candidates", [])[:16]:
+                lines.append(f"- {item.get('column')} -> {item.get('field')}: {item.get('evidence')}")
+            for check in self.mapping_suggestions.get("physics_checks", [])[:8]:
+                lines.append(f"- Physical screen: {check.get('check')}: {check.get('status')}")
+        if self.physics_checks:
+            lines.extend(["", "Physical consistency checks (advisory only):"])
+            for check in self.physics_checks[:12]:
+                lines.append(f"- {check.get('check')}: {check.get('status')}")
+
         if self.unmapped_columns:
             lines.extend(["", "Unmapped columns:", "- " + ", ".join(self.unmapped_columns[:20])])
             if len(self.unmapped_columns) > 20:
@@ -170,13 +184,21 @@ def inspect(
         sheet=sheet,
         target=target,
     )
-    return _inspection_from_explain(
+    report = _inspection_from_explain(
         explained,
         input_path=Path(path),
         target=target,
         repair_policy=normalized_repair_policy,
         max_findings=max_findings,
     )
+    if profile is None and "Headerless wide tables" in (report.error or ""):
+        report.mapping_suggestions = suggest_headerless_columns(path, sheet=sheet)
+        report.suggested_actions.insert(
+            0,
+            "Review the unapproved column candidates against the instrument documentation, "
+            "then supply an explicit column-mapping profile. No mapping has been applied.",
+        )
+    return report
 
 
 def _inspection_from_explain(
@@ -230,6 +252,7 @@ def _inspection_from_explain(
         canonical_columns=explained.canonical_columns,
         target_columns=explained.export_columns,
         column_mapping=explained.column_mapping,
+        physics_checks=explained.physics_checks,
         unit_transforms=explained.unit_transforms,
         current_sign=explained.current_sign,
         current_sign_evidence=explained.current_sign_evidence,
