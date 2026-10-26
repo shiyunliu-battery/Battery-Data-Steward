@@ -31,6 +31,32 @@ def _two_row_headerless(path: Path) -> None:
     )
 
 
+
+
+def test_headerless_backend_names_are_stably_one_based(tmp_path):
+    """The position labels must not shift with pandas or Polars releases."""
+    from battery_data_standard.io import (
+        _canonicalize_headerless_positions,
+        read_table_with_metadata,
+    )
+
+    zero_based = pl.DataFrame({f"column_{idx}": [idx] for idx in range(10)})
+    renamed = _canonicalize_headerless_positions(zero_based)
+    assert renamed.columns == [f"column_{idx}" for idx in range(1, 11)]
+    assert renamed["column_9"].to_list() == [8]
+
+    one_based = pl.DataFrame({f"column_{idx}": [idx] for idx in range(1, 11)})
+    assert _canonicalize_headerless_positions(one_based).columns == one_based.columns
+
+    source = tmp_path / "557_Charge10.csv"
+    _two_row_headerless(source)
+    result = read_table_with_metadata(source, options={"allow_headerless": True})
+    assert result.metadata["has_header"] is False
+    assert result.data.columns[0] == "column_1"
+    assert result.data["column_9"].to_list() == [3.38427, 3.39]
+    assert result.data["column_10"].to_list() == [0.0, 1.5]
+
+
 def test_two_row_fixture_only_suggests_mapping_without_silent_conversion(tmp_path):
     path = tmp_path / "557_Charge10.csv"
     _two_row_headerless(path)
