@@ -31,9 +31,11 @@ def _finite_number(value: Any) -> float | None:
 
 
 def _is_increasing(values: list[float]) -> bool:
-    return len(values) > 1 and all(
-        later >= earlier for earlier, later in pairwise(values)
-    ) and values[-1] > values[0]
+    return (
+        len(values) > 1
+        and all(later >= earlier for earlier, later in pairwise(values))
+        and values[-1] > values[0]
+    )
 
 
 def _power_relation(
@@ -153,13 +155,16 @@ def review_mapped_physics(
     current = [_finite_number(x) for x in subset["current_a"].to_list()]
     result: list[dict[str, Any]] = []
     valid_time = [x for x in time if x is not None]
-    result.append({
-        "check": "test_time_progression",
-        "status": "consistent_screen" if len(valid_time) == len(time) and _is_increasing(valid_time)
-                  else "inconsistent_screen",
-        "observations": len(time),
-        "limitation": "A monotonic time axis alone does not identify the time field.",
-    })
+    result.append(
+        {
+            "check": "test_time_progression",
+            "status": "consistent_screen"
+            if len(valid_time) == len(time) and _is_increasing(valid_time)
+            else "inconsistent_screen",
+            "observations": len(time),
+            "limitation": "A monotonic time axis alone does not identify the time field.",
+        }
+    )
     if len(time) < MIN_RELATION_POINTS:
         return result
     if all(x is not None for x in (*voltage, *current)) and (
@@ -167,10 +172,12 @@ def review_mapped_physics(
     ):
         power = [_finite_number(x) for x in subset["power_w"].to_list()]
         if all(x is not None for x in power):
-            result.append({
-                "check": "source_power_vs_voltage_current",
-                **_power_relation(voltage, current, power),
-            })
+            result.append(
+                {
+                    "check": "source_power_vs_voltage_current",
+                    **_power_relation(voltage, current, power),
+                }
+            )
     if all(x is not None for x in (*time, *current)):
         cycle = subset["cycle_index"].to_list() if "cycle_index" in subset.columns else None
         step = subset["step_index"].to_list() if "step_index" in subset.columns else None
@@ -179,11 +186,13 @@ def review_mapped_physics(
                 continue
             capacity = [_finite_number(x) for x in subset[field].to_list()]
             if all(x is not None for x in capacity):
-                result.append({
-                    "check": "source_capacity_vs_integrated_current",
-                    "capacity_column": field,
-                    **_capacity_relation(time, current, capacity, cycle=cycle, step=step),
-                })
+                result.append(
+                    {
+                        "check": "source_capacity_vs_integrated_current",
+                        "capacity_column": field,
+                        **_capacity_relation(time, current, capacity, cycle=cycle, step=step),
+                    }
+                )
     return result
 
 
@@ -193,8 +202,13 @@ def _read_sample(path: Path, sheet: str | int | None, max_rows: int) -> pd.DataF
         return pd.read_excel(path, header=None, dtype=str, nrows=max_rows, sheet_name=selected_sheet)
     if path.suffix.lower() in {".csv", ".tsv", ".txt"}:
         return pd.read_csv(
-            path, header=None, sep=None, engine="python", dtype=str,
-            nrows=max_rows, encoding="utf-8-sig",
+            path,
+            header=None,
+            sep=None,
+            engine="python",
+            dtype=str,
+            nrows=max_rows,
+            encoding="utf-8-sig",
         )
     raise ValueError("Suggestions currently support CSV, TSV, text and Excel only")
 
@@ -232,10 +246,14 @@ def suggest_headerless_columns(
 
     def add(field: str, column: str, evidence: str) -> None:
         if len([item for item in report["candidates"] if item["field"] == field]) < 5:
-            report["candidates"].append({
-                "field": field, "column": column, "evidence": evidence,
-                "status": "needs_confirmation",
-            })
+            report["candidates"].append(
+                {
+                    "field": field,
+                    "column": column,
+                    "evidence": evidence,
+                    "status": "needs_confirmation",
+                }
+            )
 
     for idx in range(sampled.shape[1]):
         column = f"column_{idx + 1}"
@@ -249,7 +267,11 @@ def suggest_headerless_columns(
                 seconds = durations.astype(float).tolist()
                 if _is_increasing(seconds):
                     time_candidates[column] = seconds
-                    add("elapsed_time_candidate", column, "Monotonic HH:MM:SS values; total versus step time unknown")
+                    add(
+                        "elapsed_time_candidate",
+                        column,
+                        "Monotonic HH:MM:SS values; total versus step time unknown",
+                    )
             continue
         if all(re.search(r"\d{1,4}[-/]\d{1,2}[-/]\d{1,4}\s+", x) for x in items):
             add("timestamp_candidate", column, "Date/time-like strings; not proof of elapsed test time")
@@ -267,10 +289,18 @@ def suggest_headerless_columns(
             add("elapsed_time_candidate", column, "Monotonic numeric sequence; unit and time role unverified")
         if 1.8 <= low <= high <= 5.5 and high - low > 1e-5:
             voltage_candidates.append(column)
-            add("voltage_candidate", column, "Values plausible for one Li-ion cell; no independent unit evidence")
-        if high - low > 0.05 and max(abs(low), abs(high)) < 1000 and (
-            low < -0.02 < high or (any(abs(v) < 0.02 for v in parsed) and
-                                    any(abs(v) > 0.2 for v in parsed))
+            add(
+                "voltage_candidate",
+                column,
+                "Values plausible for one Li-ion cell; no independent unit evidence",
+            )
+        if (
+            high - low > 0.05
+            and max(abs(low), abs(high)) < 1000
+            and (
+                low < -0.02 < high
+                or (any(abs(v) < 0.02 for v in parsed) and any(abs(v) > 0.2 for v in parsed))
+            )
         ):
             current_candidates.append(column)
             add("current_candidate", column, "Current-like zero, polarity or step changes; unit unknown")
@@ -278,11 +308,13 @@ def suggest_headerless_columns(
             add("temperature_candidate", column, "Range plausible in degC; other quantities remain possible")
 
     if len(sampled) < MIN_RELATION_POINTS:
-        report["physics_checks"].append({
-            "check": "cross_column_relations",
-            "status": "not_assessable",
-            "reason": "At least six observations and an independent power/capacity candidate are needed",
-        })
+        report["physics_checks"].append(
+            {
+                "check": "cross_column_relations",
+                "status": "not_assessable",
+                "reason": "At least six observations and an independent power/capacity candidate are needed",
+            }
+        )
         return report
 
     for v_col in voltage_candidates[:4]:
@@ -295,11 +327,13 @@ def suggest_headerless_columns(
                 result = _power_relation(numeric[v_col], numeric[i_col], power)
                 if result["status"] == "consistent_screen":
                     add("power_candidate", p_col, "Numerically matches V times I; sign and units unverified")
-                    report["physics_checks"].append({
-                        "check": "power_vs_voltage_current",
-                        "columns": {"voltage": v_col, "current": i_col, "power": p_col},
-                        **result,
-                    })
+                    report["physics_checks"].append(
+                        {
+                            "check": "power_vs_voltage_current",
+                            "columns": {"voltage": v_col, "current": i_col, "power": p_col},
+                            **result,
+                        }
+                    )
                 if len(report["physics_checks"]) >= 10:
                     break
 
@@ -312,18 +346,26 @@ def suggest_headerless_columns(
                     continue
                 result = _capacity_relation(time, numeric[i_col], capacity)
                 if result["status"] == "consistent_screen":
-                    add("capacity_candidate", q_col, "Matches current integration under assumed units/reset policy")
-                    report["physics_checks"].append({
-                        "check": "capacity_vs_integrated_current",
-                        "columns": {"time": t_col, "current": i_col, "capacity": q_col},
-                        **result,
-                    })
+                    add(
+                        "capacity_candidate",
+                        q_col,
+                        "Matches current integration under assumed units/reset policy",
+                    )
+                    report["physics_checks"].append(
+                        {
+                            "check": "capacity_vs_integrated_current",
+                            "columns": {"time": t_col, "current": i_col, "capacity": q_col},
+                            **result,
+                        }
+                    )
                 if len(report["physics_checks"]) >= 20:
                     break
     if not report["physics_checks"]:
-        report["physics_checks"].append({
-            "check": "cross_column_relations",
-            "status": "not_assessable",
-            "reason": "No independent source relationship could be established from the sample",
-        })
+        report["physics_checks"].append(
+            {
+                "check": "cross_column_relations",
+                "status": "not_assessable",
+                "reason": "No independent source relationship could be established from the sample",
+            }
+        )
     return report
