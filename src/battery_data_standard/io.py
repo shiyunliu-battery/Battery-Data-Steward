@@ -242,6 +242,8 @@ def read_table_with_metadata(
         before_cleaning = data.height
         data = _drop_repeated_header_rows(data)
         metadata["repeated_headers_skipped"] = before_cleaning - data.height
+        if not metadata["has_header"]:
+            data = _canonicalize_headerless_positions(data)
         if not options.get("allow_headerless"):
             data = _apply_positional_columns(data)
         metadata.update({"backend": "polars", "raw_columns": list(data.columns)})
@@ -280,6 +282,8 @@ def read_table_with_metadata(
         before_cleaning = data.height
         data = _drop_repeated_header_rows(data)
         metadata["repeated_headers_skipped"] = before_cleaning - data.height
+        if not metadata["has_header"]:
+            data = _canonicalize_headerless_positions(data)
         if not options.get("allow_headerless"):
             data = _apply_positional_columns(data)
         metadata.update({"backend": "pandas", "raw_columns": list(data.columns)})
@@ -963,6 +967,18 @@ def _looks_like_data_token(value: str) -> bool:
     if re.match(r"^\d+d?\s*\d{1,2}:\d{2}:\d{2}(?:\.\d+)?$", text, flags=re.IGNORECASE):
         return True
     return bool(re.match(r"^column_\d+$|^_\d+$", text, flags=re.IGNORECASE))
+
+
+def _canonicalize_headerless_positions(data: pl.DataFrame) -> pl.DataFrame:
+    """Give headerless fields stable, one-based column labels across reader backends."""
+    if not _looks_like_generic_columns(data.columns):
+        return data
+    expected = [f"column_{index}" for index in range(1, data.width + 1)]
+    if data.columns == expected:
+        return data
+    # Some Polars versions use column_0 while others use column_1; source
+    # positions must not depend on the installed Polars or pandas version.
+    return data.rename(dict(zip(data.columns, expected, strict=True)))
 
 
 def _apply_positional_columns(data: pl.DataFrame) -> pl.DataFrame:
