@@ -76,16 +76,16 @@ def test_mapped_physics_checks_independently_measured_columns():
     power = [v * i for v, i in zip(voltage, currents, strict=True)]
     capacity = [0.0]
     for index in range(1, len(times)):
-        capacity.append(
-            capacity[-1] + (currents[index - 1] + currents[index]) * 0.5 * 300 / 3600
-        )
-    frame = pl.DataFrame({
-        "test_time_s": times,
-        "voltage_v": voltage,
-        "current_a": currents,
-        "power_w": power,
-        "charge_capacity_ah": capacity,
-    })
+        capacity.append(capacity[-1] + (currents[index - 1] + currents[index]) * 0.5 * 300 / 3600)
+    frame = pl.DataFrame(
+        {
+            "test_time_s": times,
+            "voltage_v": voltage,
+            "current_a": currents,
+            "power_w": power,
+            "charge_capacity_ah": capacity,
+        }
+    )
     provenance = [
         ColumnProvenance(column="power_w", source="Power (W)"),
         ColumnProvenance(column="charge_capacity_ah", source="Charging Capacity (Ah)"),
@@ -99,15 +99,15 @@ def test_mapped_physics_checks_independently_measured_columns():
     # Synthetic derived power is circular evidence, so do not claim independence.
     derived = [ColumnProvenance(column="power_w", source="derived from voltage and current")]
     assert not any(
-        check["check"] == "source_power_vs_voltage_current"
-        for check in review_mapped_physics(frame, derived)
+        check["check"] == "source_power_vs_voltage_current" for check in review_mapped_physics(frame, derived)
     )
 
     corrupted = frame.with_columns((pl.col("power_w") * 1.5).alias("power_w"))
     invalid = review_mapped_physics(corrupted, provenance)
-    assert next(
-        c for c in invalid if c["check"] == "source_power_vs_voltage_current"
-    )["status"] == "inconsistent_screen"
+    assert (
+        next(c for c in invalid if c["check"] == "source_power_vs_voltage_current")["status"]
+        == "inconsistent_screen"
+    )
 
 
 def test_headerless_power_capacity_consistency_is_only_a_candidate(tmp_path):
@@ -126,13 +126,11 @@ def test_headerless_power_capacity_consistency_is_only_a_candidate(tmp_path):
     result = suggest_headerless_columns(path)
     assert result["status"] == "needs_confirmation"
     assert any(
-        check["check"] == "power_vs_voltage_current"
-        and check["status"] == "consistent_screen"
+        check["check"] == "power_vs_voltage_current" and check["status"] == "consistent_screen"
         for check in result["physics_checks"]
     )
     assert any(
-        check["check"] == "capacity_vs_integrated_current"
-        and check["status"] == "consistent_screen"
+        check["check"] == "capacity_vs_integrated_current" and check["status"] == "consistent_screen"
         for check in result["physics_checks"]
     )
     assert result["candidates"]
