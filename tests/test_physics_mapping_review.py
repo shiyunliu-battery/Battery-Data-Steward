@@ -73,7 +73,7 @@ def test_mapped_physics_checks_independently_measured_columns():
     times = list(range(0, 3600, 300))
     currents = [0.0] + [1.0] * (len(times) - 1)
     voltage = [3.85 - 0.01 * x for x in range(len(times))]
-    power = [v * i for v, i in zip(voltage, currents)]
+    power = [v * i for v, i in zip(voltage, currents, strict=True)]
     capacity = [0.0]
     for index in range(1, len(times)):
         capacity.append(
@@ -117,7 +117,7 @@ def test_headerless_power_capacity_consistency_is_only_a_candidate(tmp_path):
     voltages = [3.9 - 0.012 * n for n in range(len(times))]
     capacity = 0.0
     records = []
-    for index, (time, voltage, current) in enumerate(zip(times, voltages, currents)):
+    for index, (time, voltage, current) in enumerate(zip(times, voltages, currents, strict=True)):
         if index:
             capacity += 0.5 * (currents[index - 1] + current) * 300 / 3600
         records.append([time, voltage, current, voltage * current, capacity])
