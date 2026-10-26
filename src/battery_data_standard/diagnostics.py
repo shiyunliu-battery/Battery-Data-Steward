@@ -11,8 +11,8 @@ from typing import Any
 from .api import detect, detect_kind, read_eis, read_with_report
 from .eis import validate_eis
 from .exceptions import BatteryDataStandardError, FileIOError
-from .physics_mapping import review_mapped_physics
 from .export import to_export_frame
+from .physics_mapping import review_mapped_physics
 from .reports import ColumnProvenance
 
 
