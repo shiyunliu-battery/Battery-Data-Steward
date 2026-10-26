@@ -23,6 +23,31 @@ are reported but not inserted.
 `--target` only previews output labels and mappings. It does not claim that the
 artifact conforms to BDF or is accepted by another downstream tool.
 
+
+### Physics-informed mapping review
+
+Inspection performs conservative source-backed cross-column screens where measured
+power or capacity is separately recorded. It checks sampled test-time progression,
+power against voltage times current (allowing either sign convention), and
+increasing capacity against integrated absolute current within recorded
+step/cycle boundaries. Results appear in JSON under `physics_checks`.
+A `consistent_screen` is **not proof of a correct field mapping**:
+units, instrument convention, source independence and protocol must still be reviewed.
+Calculated/derived power is excluded to avoid circular verification; capacity
+screens state their assumptions and sample limits. A mismatch is a review signal,
+not permission to rewrite or repair the data.
+
+For an unknown, wide **headerless** CSV/TSV/text or Excel file, if the ordinary
+import refuses positional guessing, `bds inspect` now offers bounded
+candidate columns in `mapping_suggestions` where patterns support them.
+The candidates may include elapsed-time-like fields, plausible single-cell voltage,
+step-like current, timestamp, temperature and selected independently corroborated
+power/capacity relationships. They are **not applied automatically**. A two-row
+example cannot distinguish total time from step time or verify capacity/power.
+Inspection keeps `readable=false` until the user supplies and reviews a
+mapping profile. There is no LLM, no data mutation and no universal score.
+
+
 JSON inspection reports are summaries, not row dumps. Findings are capped at
 500 entries, time-sampling gaps at 50 representative intervals, and truncation
 is explicit in `findings_total`, `findings_truncated`, and `gaps_truncated`.
