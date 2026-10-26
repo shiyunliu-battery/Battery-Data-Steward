@@ -125,9 +125,7 @@ class InspectionReport:
         if self.mapping_suggestions:
             lines.extend(["", "Unapproved mapping suggestions (confirmation required):"])
             for item in self.mapping_suggestions.get("candidates", [])[:16]:
-                lines.append(
-                    f"- {item.get('column')} -> {item.get('field')}: {item.get('evidence')}"
-                )
+                lines.append(f"- {item.get('column')} -> {item.get('field')}: {item.get('evidence')}")
             for check in self.mapping_suggestions.get("physics_checks", [])[:8]:
                 lines.append(f"- Physical screen: {check.get('check')}: {check.get('status')}")
         if self.physics_checks:
