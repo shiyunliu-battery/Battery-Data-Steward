@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Fix EIS normalization dropping source columns. `read_eis`, `convert_eis` and
+  `normalize_eis_frame` kept a non-impedance column only when its name contained one of
+  ten tokens (SOC, temperature, voltage, current, time, cycle, cell, battery, measure), so
+  spectrum identifiers, excitation amplitude, instrument, protocol and sequence columns were
+  silently removed and a multi-spectrum table lost which spectrum each row belonged to. Every
+  column other than the frequency/impedance inputs is now kept with its parsed type. A source
+  column named like a generated column (`-Zim_exp_Ohm`, `Phase_exp_deg`) is omitted only when
+  its values equal the generated ones; otherwise it is kept as `raw:<name>` with a warning.
+- Fix EIS normalization failing with a Polars `ComputeError` when a column is empty in the
+  first 100 rows and filled later. The output is now assembled column by column from the
+  parsed table instead of from per-row dictionaries.
+- Sort EIS output by frequency with a stable sort, so rows with equal frequency (for example
+  from different spectra) keep their source order and repeated conversions are identical.
 - Add advisory physics-informed inspection: unapproved candidate columns for
   unknown headerless tables and non-mutating power/capacity consistency screens
   for independently sourced measured fields. No automatic column assignment
