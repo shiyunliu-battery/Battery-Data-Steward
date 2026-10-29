@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 - 2026-10-29
 
+- **Breaking:** Python 3.11 or newer is required (see the last entry below).
 - Fix EIS normalization dropping source columns. `read_eis`, `convert_eis` and
   `normalize_eis_frame` kept a non-impedance column only when its name contained one of
   ten tokens (SOC, temperature, voltage, current, time, cycle, cell, battery, measure), so
