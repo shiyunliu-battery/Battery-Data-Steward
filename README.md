@@ -4,7 +4,7 @@
 
 Evidence-aware battery data preprocessing and quality assurance.
 
-[![Version 0.4.0](https://img.shields.io/badge/version-0.4.0-blue.svg)](CHANGELOG.md)
+[![Version 0.5.0](https://img.shields.io/badge/version-0.5.0-blue.svg)](CHANGELOG.md)
 [![Python >=3.11](https://img.shields.io/badge/Python-%3E%3D3.11-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Package](https://img.shields.io/badge/package-battery--data--steward-blue.svg)](pyproject.toml)
@@ -32,10 +32,8 @@ own cycler software before using the package in automated production workflows.
 
 ## Installation
 
-Python 3.11 or newer is required. The renamed distribution is
-`battery-data-steward`, starting with the planned 0.4.0 release. The PyPI command
-below becomes available after that release is published. Until then, install
-this checkout with `python -m pip install .`.
+Python 3.11 or newer is required. The distribution is `battery-data-steward`
+on PyPI; it was renamed from `battery-data-standard` in 0.4.0.
 
 When migrating an environment that has the old distribution installed, first run
 `python -m pip uninstall battery-data-standard`. Both distributions provide the
