@@ -164,7 +164,11 @@ bds.list_export_targets()
 read_eis(path, sheet=None, phase_unit=None)
 ```
 
-Reads an EIS file into the standardized EIS table.
+Reads an EIS file into the standardized EIS table: `Frequency_Hz`, `Zre_exp_Ohm`,
+`Zim_exp_Ohm`, `-Zim_exp_Ohm` and `Phase_exp_deg`, followed by every other source
+column with its parsed type. A source column named like a generated column is
+omitted when its values match and is otherwise kept as `raw:<name>` with a warning.
+Rows are sorted by descending frequency with a stable sort.
 
 ### `convert_eis`
 

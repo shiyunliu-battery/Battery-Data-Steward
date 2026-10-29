@@ -311,7 +311,9 @@ report = bds.convert_eis("impedance.csv", "normalized.eis.csv")
 
 EIS conversion skips entirely empty rows and exact repeated header rows, records
 cleanup notices, and rejects nonempty rows with invalid numeric data or
-non-positive frequency. Errors identify a parsed table row, not a physical file
+non-positive frequency. All other source columns, such as spectrum identifiers,
+SOC, temperature, excitation amplitude, instrument and protocol, are kept after
+the five standardized impedance columns. Errors identify a parsed table row, not a physical file
 line. Explicit `deg` or `rad` phase labels determine the unit. Unitless `Zphz`,
 `Zphase`, and `Phase` headers assume degrees with a warning; use
 `read_eis(path, phase_unit="rad")` or `bds convert-eis ... --phase-unit rad` to

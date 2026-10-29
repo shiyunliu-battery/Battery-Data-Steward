@@ -16,6 +16,7 @@ from .reports import ValidationIssue, ValidationReport
 
 EIS_SCHEMA_VERSION = "eis-2026-05"
 EIS_REQUIRED_COLUMNS = ("Frequency_Hz", "Zre_exp_Ohm", "Zim_exp_Ohm")
+EIS_GENERATED_COLUMNS = (*EIS_REQUIRED_COLUMNS, "-Zim_exp_Ohm", "Phase_exp_deg")
 
 
 def read_eis(
@@ -244,8 +245,7 @@ def normalize_eis_frame(raw: pl.DataFrame, *, phase_unit: str | None = None) -> 
     if _is_negative_imaginary_column(zim_col):
         zim = [None if value is None else -value for value in zim]
 
-    rows: list[dict[str, Any]] = []
-    context_columns = [col for col in raw.columns if col not in {freq_col, zre_col, zim_col}]
+    computed: dict[str, list[float]] = {name: [] for name in EIS_GENERATED_COLUMNS}
     for index, (f_value, zr_value, zi_value) in enumerate(zip(freq, zre, zim, strict=True)):
         if (
             f_value is None
@@ -259,22 +259,15 @@ def normalize_eis_frame(raw: pl.DataFrame, *, phase_unit: str | None = None) -> 
             raise ConversionError(
                 f"Invalid EIS row at parsed table row {index + 1}; no rows were silently discarded."
             )
-        row: dict[str, Any] = {
-            "Frequency_Hz": f_value,
-            "Zre_exp_Ohm": zr_value,
-            "Zim_exp_Ohm": zi_value,
-            "-Zim_exp_Ohm": -zi_value,
-            "Phase_exp_deg": math.degrees(math.atan2(zi_value, zr_value)),
-        }
-        for column in context_columns:
-            if _looks_like_context(column):
-                row[column] = raw[column][index]
-        rows.append(row)
+        computed["Frequency_Hz"].append(f_value)
+        computed["Zre_exp_Ohm"].append(zr_value)
+        computed["Zim_exp_Ohm"].append(zi_value)
+        computed["-Zim_exp_Ohm"].append(-zi_value)
+        computed["Phase_exp_deg"].append(math.degrees(math.atan2(zi_value, zr_value)))
 
-    if not rows:
+    if not computed["Frequency_Hz"]:
         raise ConversionError("No valid EIS rows found after normalization.")
-    df = pl.DataFrame(rows)
-    return df.sort("Frequency_Hz", descending=True)
+    return _assemble_eis_frame(computed, raw, used_columns={freq_col, zre_col, zim_col})
 
 
 def looks_like_eis_columns(columns: list[str]) -> bool:
@@ -316,8 +309,7 @@ def _normalize_eis_magnitude_phase_frame(
     else:
         raise ConversionError("EIS phase unit is ambiguous; label the column Phase(deg) or Phase(rad).")
 
-    rows: list[dict[str, Any]] = []
-    context_columns = [col for col in raw.columns if col not in {freq_col, zmod_col, phase_col}]
+    computed: dict[str, list[float]] = {name: [] for name in EIS_GENERATED_COLUMNS}
     for index, (f_value, mag_value, phase_value) in enumerate(zip(freq, zmod, phase, strict=True)):
         if (
             f_value is None
@@ -334,21 +326,54 @@ def _normalize_eis_magnitude_phase_frame(
         angle = math.radians(phase_value) if phase_in_degrees else phase_value
         zre = mag_value * math.cos(angle)
         zim = mag_value * math.sin(angle)
-        row: dict[str, Any] = {
-            "Frequency_Hz": f_value,
-            "Zre_exp_Ohm": zre,
-            "Zim_exp_Ohm": zim,
-            "-Zim_exp_Ohm": -zim,
-            "Phase_exp_deg": math.degrees(angle),
-        }
-        for column in context_columns:
-            if _looks_like_context(column):
-                row[column] = raw[column][index]
-        rows.append(row)
+        computed["Frequency_Hz"].append(f_value)
+        computed["Zre_exp_Ohm"].append(zre)
+        computed["Zim_exp_Ohm"].append(zim)
+        computed["-Zim_exp_Ohm"].append(-zim)
+        computed["Phase_exp_deg"].append(math.degrees(angle))
 
-    if not rows:
+    if not computed["Frequency_Hz"]:
         raise ConversionError("No valid EIS rows found after magnitude/phase normalization.")
-    return pl.DataFrame(rows).sort("Frequency_Hz", descending=True)
+    return _assemble_eis_frame(computed, raw, used_columns={freq_col, zmod_col, phase_col})
+
+
+def _assemble_eis_frame(
+    computed: dict[str, list[float]], raw: pl.DataFrame, *, used_columns: set[str]
+) -> pl.DataFrame:
+    """Join the computed impedance columns with every other source column.
+
+    Source columns other than the frequency/impedance inputs are kept unchanged, with their
+    parsed types: spectrum identifiers, measurement conditions, instrument and protocol
+    fields are part of the record. A source column named like a generated column is
+    omitted only when its values equal the generated ones; otherwise it is kept as
+    ``raw:<name>`` with a warning. The frequency sort is stable, so rows with the same
+    frequency (for example from different spectra) keep their source order.
+    """
+    df = pl.DataFrame(computed, schema=dict.fromkeys(EIS_GENERATED_COLUMNS, pl.Float64))
+    kept: list[pl.Series] = []
+    for column in raw.columns:
+        if column in used_columns:
+            continue
+        series = raw[column]
+        if column in df.columns:
+            if _same_numeric_values(series, df[column]):
+                continue
+            renamed = f"raw:{column}"
+            warnings.warn(
+                f"Source column {column!r} differs from the generated {column!r}; kept as {renamed!r}.",
+                UserWarning,
+                stacklevel=3,
+            )
+            series = series.alias(renamed)
+        kept.append(series)
+    return df.hstack(kept).sort("Frequency_Hz", descending=True, maintain_order=True)
+
+
+def _same_numeric_values(source: pl.Series, generated: pl.Series) -> bool:
+    for left, right in zip(_float_values(source), generated.to_list(), strict=True):
+        if left is None or right is None or not math.isclose(left, right, rel_tol=1e-9, abs_tol=1e-12):
+            return False
+    return True
 
 
 def _add_frequency_values_from_sibling(path: Path, raw: pl.DataFrame) -> pl.DataFrame:
@@ -442,25 +467,6 @@ def _parse_complex(value: Any) -> complex | None:
 def _is_negative_imaginary_column(column: str) -> bool:
     text = column.strip().lower()
     return text.startswith("-") or "-im" in text or "minus" in text
-
-
-def _looks_like_context(column: str) -> bool:
-    slug = _slug(column)
-    return any(
-        token in slug
-        for token in (
-            "soc",
-            "temperature",
-            "temp",
-            "voltage",
-            "current",
-            "time",
-            "cycle",
-            "cell",
-            "battery",
-            "measure",
-        )
-    )
 
 
 def _slug(value: str) -> str:
