@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
-from datetime import timedelta, timezone
+from datetime import UTC, timedelta
 from itertools import pairwise
 from typing import Any
 
@@ -583,7 +583,7 @@ def _parse_unix_time(values: list[Any], *, date_order: str | None = None) -> lis
         if pd.isna(value):
             unix.append(None)
         else:
-            unix.append(value.to_pydatetime().replace(tzinfo=timezone.utc).timestamp())
+            unix.append(value.to_pydatetime().replace(tzinfo=UTC).timestamp())
 
     finite = [v for v in unix if v is not None]
     if finite:

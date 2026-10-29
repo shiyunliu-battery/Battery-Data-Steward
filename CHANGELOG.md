@@ -22,6 +22,11 @@
 - Stabilize one-based positional field labels across Polars/pandas versions
   for unlabeled CSV inputs, and correct the two-row headerless regression mapping
   (time/voltage/current columns 4/9/10).
+- Require Python 3.11 or newer. `reportlab`, a core dependency, installs Pillow, and the
+  fixes for the Pillow advisories reported by `pip-audit` (Pillow 13.0.0) require Python
+  3.11. On Python 3.10 users could only install a vulnerable Pillow, and the 3.10 CI jobs
+  failed the dependency audit. Removed 3.10 from the CI matrix and classifiers, moved the
+  ruff and mypy targets to 3.11, and applied the two resulting `datetime.UTC` lint fixes.
 
 ## 0.4.0 - 2026-10-14
 
