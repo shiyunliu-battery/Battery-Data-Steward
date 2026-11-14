@@ -84,6 +84,15 @@ or when an adapter can derive it from a source start timestamp and elapsed test
 time. If the source file does not include timezone information, the timestamp is
 preserved as local or unspecified time; the package does not assert UTC.
 
+Date text that starts with a four-digit year is copied unchanged. Other layouts
+(`06/02/2019 23:58`, `06.02.2019 23:58`) depend on a day/month order that an
+export file cannot carry, so they are written as ISO 8601 rendered from the
+timestamp BDS parsed with the profile's `date_order` (`2019-02-06T23:58:00`). A
+reader without the profile then reads the same instant. Naive text stays naive;
+text with an explicit zone is written in UTC with a `Z` suffix. The conversion
+report records the rule and the number of rewritten values under
+`export_date_time`. Text BDS could not parse is copied unchanged.
+
 `Test Time (s)` is elapsed time from the start of the full test.
 
 `Step Time (s)` is elapsed time within the active step.

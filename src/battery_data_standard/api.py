@@ -25,7 +25,9 @@ from .exceptions import (
     ValidationFailed,
 )
 from .export import (
+    DATE_TIME_EXPORT_RULE,
     EXPORT_FORMAT_VERSION,
+    iso_date_time_from_unix,
     looks_like_export_frame,
     normalize_export_target,
     output_suffix_for_target,
@@ -691,6 +693,9 @@ def _set_export_report_metadata(
     report.metadata["export_target"] = normalize_export_target(target)
     report.metadata["internal_columns"] = list(internal_df.columns)
     report.metadata["export_columns"] = list(export_df.columns)
+    _, rewritten = iso_date_time_from_unix(internal_df)
+    if rewritten:
+        report.metadata["export_date_time"] = {"rule": DATE_TIME_EXPORT_RULE, "values_rewritten": rewritten}
 
 
 def _screen_validation_issues(checks: dict[str, Any]) -> list[ValidationIssue]:
