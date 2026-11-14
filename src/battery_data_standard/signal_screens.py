@@ -80,7 +80,7 @@ def clock_divergence(df: pl.DataFrame, *, min_divergence_s: float = CLOCK_DIVERG
     result.update(wall_clock_resolution_s=resolution, threshold_s=threshold)
 
     events = []
-    for k in candidates:
+    for k in candidates.tolist():
         before, after = int(rows[k]), int(rows[k + 1])
         value = float(divergence[k])
         event: dict[str, Any] = {
