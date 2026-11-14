@@ -43,6 +43,8 @@ class ExplainReport:
     warnings: list[str] = field(default_factory=list)
     unmapped_columns: list[str] = field(default_factory=list)
     time_sampling: dict[str, Any] | None = None
+    clock_divergence: dict[str, Any] | None = None
+    temperature_excursions: dict[str, Any] | None = None
     physics_checks: list[dict[str, Any]] = field(default_factory=list)
     recommended_next_action: str = ""
     error_type: str | None = None
@@ -200,6 +202,8 @@ def explain(
             warnings=report.warnings,
             unmapped_columns=report.unmapped_columns,
             time_sampling=report.metadata.get("time_sampling"),
+            clock_divergence=report.metadata.get("clock_divergence"),
+            temperature_excursions=report.metadata.get("temperature_excursions"),
             physics_checks=review_mapped_physics(df, report.provenance),
             recommended_next_action=_next_action(status, report.cycler),
         )

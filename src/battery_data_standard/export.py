@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from itertools import pairwise
 
 import polars as pl
@@ -208,10 +209,53 @@ def export_label_for_canonical(column: str, *, target: str | None = "bds") -> st
     return _INTEGRATION_EXPORT_RENAMES.get(target_id, {}).get(column)
 
 
+# Date text that starts with a four-digit year is read the same way by every parser; other
+# layouts (06/02/2019, 06.02.2019, Feb 6 2019) depend on a day/month order the export cannot carry.
+_YEAR_FIRST_DATE = re.compile(r"^\s*\d{4}-\d{1,2}-\d{1,2}")
+_EXPLICIT_ZONE = re.compile(r"(?:Z|[+-]\d{2}:?\d{2})\s*$", re.IGNORECASE)
+DATE_TIME_EXPORT_RULE = (
+    "date_time text that does not start with a four-digit year is written as ISO 8601 rendered from"
+    " unix_time_s (the timestamp parsed with the declared date order); naive source text stays naive,"
+    " text with an explicit zone is written in UTC with a Z suffix"
+)
+
+
+def iso_date_time_from_unix(df: pl.DataFrame) -> tuple[pl.DataFrame, int]:
+    """Write ambiguous ``date_time`` text as ISO 8601 rendered from ``unix_time_s``.
+
+    BDS parses slash- or dot-separated dates with the profile's ``date_order``; the export keeps
+    the parsed instant in an unambiguous form, so a reader without that profile reads the same
+    instant. Year-first text, rows without a finite timestamp, and frames without either column
+    are left unchanged. Returns the frame and the number of values rewritten.
+    """
+
+    if "date_time" not in df.columns or "unix_time_s" not in df.columns:
+        return df, 0
+    texts = df["date_time"].cast(pl.String, strict=False).to_list()
+    stamps = df["unix_time_s"].cast(pl.Float64, strict=False).to_list()
+    rendered: list[str | None] = []
+    rewritten = 0
+    for text, stamp in zip(texts, stamps, strict=True):
+        if text is None or stamp is None or not math.isfinite(stamp) or _YEAR_FIRST_DATE.match(text):
+            rendered.append(text)
+            continue
+        moment = datetime.fromtimestamp(round(stamp, 3), tz=UTC)
+        value = moment.strftime("%Y-%m-%dT%H:%M:%S")
+        if moment.microsecond:
+            value += f".{moment.microsecond // 1000:03d}"
+        if _EXPLICIT_ZONE.search(text):
+            value += "Z"
+        rendered.append(value)
+        rewritten += 1
+    if not rewritten:
+        return df, 0
+    return df.with_columns(pl.Series("date_time", rendered, dtype=pl.String)), rewritten
+
+
 def to_export_frame(df: pl.DataFrame, *, target: str | None = "bds") -> pl.DataFrame:
     """Format normalized data for a user-facing file export target."""
     target_id = normalize_export_target(target)
-    canonical = _canonicalize_input_frame(df)
+    canonical, _ = iso_date_time_from_unix(_canonicalize_input_frame(df))
     if target_id == "bdf":
         return _to_legacy_bdf_export_frame(canonical)
     standard = _to_standard_export_frame(canonical)

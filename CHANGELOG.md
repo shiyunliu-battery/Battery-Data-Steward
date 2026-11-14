@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased
+
+- Add two non-mutating signal screens, run during conversion, inspection, explain and audit
+  (`battery_data_standard.signal_screens`):
+  - **Clock divergence**: compares `unix_time_s` with `test_time_s` between consecutive records
+    and reports where the wall clock advanced more than the test clock (`uncounted-wall-time`, e.g.
+    a suspended test) or less (`test-time-exceeds-wall-time`, e.g. a clock correction; about one
+    hour is marked as a possible daylight-saving shift). The threshold is the larger of 120 s and
+    twice the wall clock's resolution.
+  - **Temperature excursions**: abrupt steps per temperature channel (at least 5 °C in runs of
+    changes each at least 0.5 °C and 0.05 °C/s), paired with the step that returns the channel,
+    merged across channels that step together, with the record interval, steps and the voltage
+    and current change at the onset (`abrupt-temperature-excursion`).
+  Results are in report metadata (`clock_divergence`, `temperature_excursions`) and in
+  `InspectionReport` / `ExplainReport`; events are warning-level validation and audit issues and
+  never make a table invalid. No sample is changed or masked.
+- On the Chen et al. (2020) LG M50 files (Zenodo 4032561): the three 45 min suspensions in the
+  rest after the C/10 discharge are found at the same records as the reference analysis, and all
+  nine temperature episodes (three per cell, both channels) are found; seven have identical record
+  intervals and two include one more sample that is part-way through a two-sample onset or
+  recovery, which the reference analysis's fixed 20 °C limit excluded.
+- Audit scores of files with such events fall by 5 points per issue code, as for other warning-level
+  audit issues.
+- Fix exports losing the day/month order of slash- and dot-separated dates. The export copied the
+  source text (`06/02/2019 23:58`, parsed as 6 February with `date_order="dayfirst"`), so any reader
+  without that profile, BDS included, read it month-first (2 June) and the re-read wall clock jumped
+  by about a month at each change of day. Such text is now written as ISO 8601 rendered from the
+  parsed timestamp (`2019-02-06T23:58:00`) in every target that writes the date column
+  (`iso_date_time_from_unix`; report metadata `export_date_time`). Year-first text is unchanged,
+  naive text stays naive, and text with an explicit zone is written in UTC with `Z`. Found when BFL,
+  reading a BDS export of the Chen et al. (2020) files, reported month-long suspensions at midnight.
+
 ## 0.5.0 - 2026-10-29
 
 - **Breaking:** Python 3.11 or newer is required (see the last entry below).
