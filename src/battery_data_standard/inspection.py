@@ -44,6 +44,8 @@ class InspectionReport:
     current_sign_confidence: str | None = None
     current_sign_sanity: dict[str, Any] | None = None
     time_sampling: dict[str, Any] | None = None
+    clock_divergence: dict[str, Any] | None = None
+    temperature_excursions: dict[str, Any] | None = None
     repair_policy: str = "none"
     time_sampling_policy: str = "warn"
     source_file_modified: bool = False
@@ -259,6 +261,8 @@ def _inspection_from_explain(
         current_sign_confidence=explained.current_sign_confidence,
         current_sign_sanity=explained.current_sign_sanity,
         time_sampling=explained.time_sampling,
+        clock_divergence=explained.clock_divergence,
+        temperature_excursions=explained.temperature_excursions,
         repair_policy=repair_policy,
         validation=explained.validation,
         findings=visible_findings,

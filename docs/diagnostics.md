@@ -174,6 +174,38 @@ interpolated with `time_sampling_interpolation="linear"` by default. Use
 The report records the inferred interval, confidence, number of missing samples,
 gap locations, interpolation method, and number of inserted rows.
 
+## Clock and Temperature Screens
+
+Conversion, inspection, explain and audit run two non-mutating screens on the normalized table.
+Their results are in report metadata (`clock_divergence`, `temperature_excursions`) and their
+events become warning-level issues with stable codes. Neither screen changes, masks or
+interpolates a sample.
+
+**Clock divergence** compares the wall clock (`unix_time_s`) with `test_time_s` between consecutive
+records. When the wall clock advances more than the test clock, the test clock did not count that
+time — typically a suspended or paused test (`uncounted-wall-time`). When the test clock advances
+more, the wall clock was corrected or shifted (`test-time-exceeds-wall-time`; about one hour sets
+`possible_dst_shift`). The threshold is the larger of 120 s and twice the wall clock's resolution,
+so a clock that records whole minutes does not produce events from rounding. A test-time reset is
+left to the time-axis checks. Each event gives the record and step before and after, both clocks,
+the divergence and the voltage and current on either side.
+
+**Temperature excursions** look for abrupt steps in each temperature channel: a run of consecutive
+same-sign changes, each at least 0.5 °C and at least 0.05 °C/s, together at least 5 °C. A step is
+paired with the later opposite step that returns at least half of it; the samples between them,
+including partly changed samples of a multi-sample onset or recovery, form an excursion. An
+excursion that does not return ends at the last record. Elapsed time is test time, replaced by wall
+time only where wall time shows uncounted time, so a real change during a suspended test is not
+read as abrupt. Excursions in different channels that overlap or start within 300 s are merged
+into one episode with `coincident_channels`; the episode gives the record interval, steps, cycles,
+each channel's onset and recovery, and the voltage and current change across the onset.
+
+The thresholds are screening defaults, not physical limits; `clock_divergence(df, min_divergence_s=…)`
+and `temperature_excursions(df, min_step_c=…, min_rate_c_per_s=…, min_component_c=…,
+coincidence_window_s=…)` in `battery_data_standard.signal_screens` accept other values, and every
+result records the values used. Whether an episode is an acquisition artefact or a real thermal
+event, and whether to exclude its samples, is a review decision.
+
 ## Folder Audit
 
 Use `bds audit` for intake triage across a folder:

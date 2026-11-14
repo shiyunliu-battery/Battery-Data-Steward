@@ -10,6 +10,7 @@ from typing import Any
 import polars as pl
 
 from .reports import ColumnProvenance
+from .signal_screens import clock_divergence, temperature_excursions
 
 
 def quality_checks(
@@ -66,6 +67,8 @@ def quality_checks(
     temperature = _temperature_semantics(provenance or [])
     checks["temperature_semantics_confidence"] = temperature["confidence"]
     checks["temperature_semantics"] = temperature
+    checks["clock_divergence"] = clock_divergence(df)
+    checks["temperature_excursions"] = temperature_excursions(df)
     return checks
 
 

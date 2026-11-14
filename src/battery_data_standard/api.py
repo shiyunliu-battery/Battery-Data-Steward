@@ -40,8 +40,9 @@ from .kind import DataKindResult
 from .kind import detect_kind as _detect_kind
 from .profiles import load_profile, profile_column_map
 from .quality import quality_checks
-from .reports import ConversionReport, DetectionResult, ValidationReport
+from .reports import ConversionReport, DetectionResult, ValidationIssue, ValidationReport
 from .schema import BDS_SCHEMA_VERSION
+from .signal_screens import screen_issues
 from .time_sampling import apply_time_sampling_policy
 from .validation import validate
 
@@ -261,10 +262,13 @@ def read_with_report(
     result.metadata["step_cycle_semantics"] = checks.get("step_cycle_semantics")
     result.metadata["temperature_semantics_confidence"] = checks.get("temperature_semantics_confidence")
     result.metadata["temperature_semantics"] = checks.get("temperature_semantics")
+    result.metadata["clock_divergence"] = checks.get("clock_divergence")
+    result.metadata["temperature_excursions"] = checks.get("temperature_excursions")
     _extend_quality_warnings(result.warnings, checks)
 
     validation = validate(result.data, strict=strict)
     validation.issues.extend(sampling.validation_issues)
+    validation.issues.extend(_screen_validation_issues(checks))
     if strict and not validation.valid:
         raise ValidationFailed(validation)
     report = ConversionReport(
@@ -465,9 +469,12 @@ def convert_neware_groups(
         result.metadata["step_cycle_semantics"] = checks.get("step_cycle_semantics")
         result.metadata["temperature_semantics_confidence"] = checks.get("temperature_semantics_confidence")
         result.metadata["temperature_semantics"] = checks.get("temperature_semantics")
+        result.metadata["clock_divergence"] = checks.get("clock_divergence")
+        result.metadata["temperature_excursions"] = checks.get("temperature_excursions")
         _extend_quality_warnings(result.warnings, checks)
         validation = validate(result.data, strict=strict)
         validation.issues.extend(sampling.validation_issues)
+        validation.issues.extend(_screen_validation_issues(checks))
         if strict and not validation.valid:
             raise ValidationFailed(validation)
 
@@ -684,6 +691,14 @@ def _set_export_report_metadata(
     report.metadata["export_target"] = normalize_export_target(target)
     report.metadata["internal_columns"] = list(internal_df.columns)
     report.metadata["export_columns"] = list(export_df.columns)
+
+
+def _screen_validation_issues(checks: dict[str, Any]) -> list[ValidationIssue]:
+    """Warning-level issues for clock-divergence and temperature-excursion events (never errors)."""
+    return [
+        ValidationIssue(level, code, message, column)
+        for level, code, message, column in screen_issues(checks)
+    ]
 
 
 def _extend_quality_warnings(warnings: list[str], checks: dict[str, Any]) -> None:

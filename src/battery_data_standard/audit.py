@@ -16,6 +16,7 @@ from .io import write_json
 from .quality import quality_checks
 from .reports import ColumnProvenance, ValidationIssue
 from .schema import OPTIONAL_COLUMNS, REQUIRED_COLUMNS
+from .signal_screens import screen_issues
 from .validation import validate
 
 
@@ -378,7 +379,9 @@ def _completeness(issues: list[ValidationIssue]) -> dict[str, Any]:
 
 
 def _check_issues(checks: dict[str, Any]) -> list[AuditIssue]:
-    issues: list[AuditIssue] = []
+    issues: list[AuditIssue] = [
+        AuditIssue(level, code, message, column) for level, code, message, column in screen_issues(checks)
+    ]
     if checks.get("duplicated_timestamps", 0):
         issues.append(
             AuditIssue(
