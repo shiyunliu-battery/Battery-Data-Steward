@@ -4,7 +4,7 @@
 
 Evidence-aware battery data preprocessing and quality assurance.
 
-[![Version 0.5.0](https://img.shields.io/badge/version-0.5.0-blue.svg)](CHANGELOG.md)
+[![Version 0.6.0](https://img.shields.io/badge/version-0.6.0-blue.svg)](CHANGELOG.md)
 [![Python >=3.11](https://img.shields.io/badge/Python-%3E%3D3.11-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Package](https://img.shields.io/badge/package-battery--data--steward-blue.svg)](pyproject.toml)
