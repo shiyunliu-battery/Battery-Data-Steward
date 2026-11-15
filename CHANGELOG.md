@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 - 2026-11-15
 
 - Add two non-mutating signal screens, run during conversion, inspection, explain and audit
   (`battery_data_standard.signal_screens`):
