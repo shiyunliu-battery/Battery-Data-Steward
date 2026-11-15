@@ -29,11 +29,11 @@ The namespace change is a breaking import change from 0.6.x and earlier:
   installations from older distributions. Use `battery-data-steward` for
   requirements, lockfiles, optional extras and distribution-metadata lookups.
 
-Before publication, install from the reviewed checkout with
-`python -m pip install -e .`. The current documentation and notebooks use the
-0.7.0 namespace; a successful installation of an older PyPI version does not
-provide it. After publication, verify installation with
-`python -m pip install "battery-data-steward>=0.7.0"` in a fresh environment.
+Install the matching release with
+`python -m pip install "battery-data-steward==0.7.0"` in a fresh environment. The
+current documentation and notebooks use the 0.7.0 namespace; an older release
+does not provide it. For development, install from the repository root with
+`python -m pip install -e ".[dev]"`.
 
 ## GitHub repository settings
 
@@ -77,8 +77,7 @@ rename does not require a new PyPI project.
    a GitHub Release with the built artifacts and changelog notes. The version is
    read from the package rather than entered separately.
 6. Confirm the workflow's publish and GitHub release jobs succeeded. Verify the
-   version on PyPI and test the installed wheel in a fresh environment before
-   updating documentation to describe the release as published.
+   version on PyPI and test the installed wheel in a fresh environment.
 
 Manual publishing is allowed only from `main`. Existing version tags can also
 trigger the workflow; a tag must match the package version. A requested release

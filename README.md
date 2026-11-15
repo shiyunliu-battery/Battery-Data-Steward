@@ -33,26 +33,23 @@ own cycler software before using the package in automated production workflows.
 ## Installation
 
 Python 3.11 or newer is required. The distribution name is `battery-data-steward`.
-This checkout targets **0.7.0**, which uses the Python package
-`battery_data_steward`. The examples below require this version or newer.
-
-Until 0.7.0 is published on PyPI, install from the repository root in a fresh
-virtual environment:
+Version **0.7.0** uses the Python package `battery_data_steward`. Install the
+matching release in a fresh virtual environment:
 
 ```bash
-python -m pip install -e .
+python -m pip install "battery-data-steward==0.7.0"
 ```
 
-After publication, install the matching release with
-`python -m pip install "battery-data-steward>=0.7.0"`.
-
-Optional extras are available for additional input formats. From this checkout:
+Optional extras are available for additional input formats:
 
 ```bash
-python -m pip install -e ".[yaml]"
-python -m pip install -e ".[matlab]"
-python -m pip install -e ".[mpr]"
+python -m pip install "battery-data-steward[yaml]==0.7.0"
+python -m pip install "battery-data-steward[matlab]==0.7.0"
+python -m pip install "battery-data-steward[mpr]==0.7.0"
 ```
+
+For development, install from the repository root with
+`python -m pip install -e ".[dev]"`.
 
 The distribution installs the `bds` command. Use either the canonical Python
 package or its short public alias:

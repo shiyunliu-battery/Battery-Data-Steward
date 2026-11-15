@@ -5,12 +5,13 @@ conversion report, route an EIS worksheet, and write downstream staging files.
 
 Data: Schommer, A., Orozco Corzo, M., & Paul, H. (2024). *Dataset: Stack pressure on lithium-ion pouch cells: a comparative study of constant pressure and fixed displacement devices* [Data set]. Zenodo. https://doi.org/10.5281/zenodo.13755167
 
-Setup (from the current repository root; these examples require the 0.7.0
-Python namespace):
+Setup (these examples use the 0.7.0 Python namespace):
 
 ```bash
-python -m pip install -e .
+python -m pip install "battery-data-steward==0.7.0"
 ```
+
+For development, install from the repository root with `python -m pip install -e .`.
 
 Expected result when the workbook is available:
 
