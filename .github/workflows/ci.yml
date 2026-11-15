@@ -31,7 +31,7 @@ jobs:
       - name: Dependency audit
         run: python -m pip_audit .
       - name: Run tests
-        run: python -m pytest --cov=battery_data_standard --cov-report=term-missing
+        run: python -m pytest --cov=battery_data_steward --cov-report=term-missing
       - name: Build package
         run: python -m build
       - name: Check distributions
@@ -46,6 +46,9 @@ jobs:
             source smoke-venv/bin/activate
           fi
           python -m pip install dist/*.whl
-          python -c "from importlib.metadata import version; import bds, battery_data_standard; assert version('battery-data-steward') == bds.__version__ == battery_data_standard.__version__; assert bds.read is battery_data_standard.read; print(bds.__version__)"
+          python -c "from importlib.metadata import version; import bds, battery_data_steward; assert version('battery-data-steward') == bds.__version__ == battery_data_steward.__version__; assert bds.read is battery_data_steward.read; print(bds.__version__)"
+          python -m battery_data_steward --version
+          python -m battery_data_steward.cli --version
+          python -c "from importlib.metadata import distribution; from importlib.resources import files; dist = distribution('battery-data-steward'); assert set(dist.read_text('top_level.txt').split()) == {'battery_data_steward', 'bds'}; assert all(files(name).joinpath('py.typed').is_file() for name in ('battery_data_steward', 'bds'))"
           bds --version
           bds inspect-schema

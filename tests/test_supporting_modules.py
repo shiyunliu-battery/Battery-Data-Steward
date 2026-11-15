@@ -11,12 +11,12 @@ import polars as pl
 import pytest
 
 import bds
-from battery_data_standard import FileIOError, UnsupportedFeatureError, UnsupportedFormatError
-from battery_data_standard.api import batch_convert, list_export_targets, list_supported_formats
-from battery_data_standard.audit import audit
-from battery_data_standard.profiles import load_profile, profile_column_map
-from battery_data_standard.reports import ConversionReport, ValidationReport
-from battery_data_standard.schema import BDS_SCHEMA_VERSION
+from battery_data_steward import FileIOError, UnsupportedFeatureError, UnsupportedFormatError
+from battery_data_steward.api import batch_convert, list_export_targets, list_supported_formats
+from battery_data_steward.audit import audit
+from battery_data_steward.profiles import load_profile, profile_column_map
+from battery_data_steward.reports import ConversionReport, ValidationReport
+from battery_data_steward.schema import BDS_SCHEMA_VERSION
 
 
 def test_json_profile_maps_common_field_names(tmp_path):
@@ -81,7 +81,7 @@ def test_cli_validate_returns_two_for_invalid_file(tmp_path):
     pl.DataFrame({"test_time_s": [0.0], "voltage_v": [3.4]}).write_csv(invalid)
 
     run = subprocess.run(
-        [sys.executable, "-m", "battery_data_standard.cli", "validate", str(invalid)],
+        [sys.executable, "-m", "battery_data_steward.cli", "validate", str(invalid)],
         text=True,
         capture_output=True,
         check=False,
@@ -109,7 +109,7 @@ def test_cli_missing_input_file_uses_io_exit_code(tmp_path):
         ["validate", str(missing)],
     ):
         run = subprocess.run(
-            [sys.executable, "-m", "battery_data_standard.cli", *command],
+            [sys.executable, "-m", "battery_data_steward.cli", *command],
             text=True,
             capture_output=True,
             check=False,
@@ -128,7 +128,7 @@ def test_cli_output_write_failure_uses_io_exit_code(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "convert",
             str(raw),
             str(tmp_path),
@@ -324,7 +324,7 @@ def test_cli_batch_writes_outputs_and_manifest(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "batch",
             str(input_dir),
             str(output_dir),
@@ -354,7 +354,7 @@ def test_cli_batch_with_skipped_helper_files_returns_success(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "batch",
             str(archive),
             str(output_dir),
@@ -383,7 +383,7 @@ def test_cli_batch_with_only_skipped_helper_files_returns_partial(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "batch",
             str(input_dir),
             str(output_dir),
@@ -682,7 +682,7 @@ def test_cli_inspect_prints_text_and_writes_bounded_json_report(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "inspect",
             str(raw),
             "--cycler",
@@ -766,7 +766,7 @@ def test_cli_explain_json_and_text(tmp_path):
     env = {**os.environ, "PYTHONPATH": str(Path(__file__).parents[1] / "src")}
 
     json_run = subprocess.run(
-        [sys.executable, "-m", "battery_data_standard.cli", "explain", str(raw), "--cycler", "generic"],
+        [sys.executable, "-m", "battery_data_steward.cli", "explain", str(raw), "--cycler", "generic"],
         text=True,
         capture_output=True,
         env=env,
@@ -776,7 +776,7 @@ def test_cli_explain_json_and_text(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "explain",
             str(raw),
             "--cycler",
@@ -804,7 +804,7 @@ def test_cli_doctor_reports_missing_columns_and_fixture_checklist(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "doctor",
             str(raw),
             "--cycler",
@@ -833,7 +833,7 @@ def test_cli_doctor_json_reports_candidates_and_suggestions(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "doctor",
             str(raw),
             "--cycler",
@@ -864,7 +864,7 @@ def test_cli_explain_writes_user_facing_reports(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "explain",
             str(raw),
             "--cycler",
@@ -915,7 +915,7 @@ def test_cli_audit_writes_json_and_html(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "audit",
             str(input_dir),
             "--cycler",
@@ -947,7 +947,7 @@ def test_cli_batch_returns_partial_failure_code(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "batch",
             str(input_dir),
             str(output_dir),
@@ -976,7 +976,7 @@ def test_cli_batch_continue_on_error_flag_is_supported(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "batch",
             str(input_dir),
             str(output_dir),
@@ -1035,7 +1035,7 @@ def test_supported_formats_expose_maturity_metadata():
 
 def test_cli_formats_exposes_evidence_tier():
     run = subprocess.run(
-        [sys.executable, "-m", "battery_data_standard.cli", "formats"],
+        [sys.executable, "-m", "battery_data_steward.cli", "formats"],
         check=False,
         capture_output=True,
         text=True,

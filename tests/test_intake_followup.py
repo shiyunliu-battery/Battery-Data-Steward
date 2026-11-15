@@ -7,13 +7,13 @@ import pytest
 from openpyxl import Workbook
 
 import bds
-from battery_data_standard.adapters.normalization import _parse_number, _parse_unix_time
-from battery_data_standard.cli import main
-from battery_data_standard.diagnostics import explain
-from battery_data_standard.exceptions import ConversionError, UnsupportedFormatError
-from battery_data_standard.quality import _repeated_step_segments
-from battery_data_standard.reporting import _report_statement, _time_sampling_rows
-from battery_data_standard.time_sampling import apply_time_sampling_policy
+from battery_data_steward.adapters.normalization import _parse_number, _parse_unix_time
+from battery_data_steward.cli import main
+from battery_data_steward.diagnostics import explain
+from battery_data_steward.exceptions import ConversionError, UnsupportedFormatError
+from battery_data_steward.quality import _repeated_step_segments
+from battery_data_steward.reporting import _report_statement, _time_sampling_rows
+from battery_data_steward.time_sampling import apply_time_sampling_policy
 
 
 @pytest.mark.parametrize("status", ["Dynamic", "Delay", "DCIR", "Control"])

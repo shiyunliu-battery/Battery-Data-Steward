@@ -10,7 +10,7 @@ from typing import Any
 
 from .api import detect, detect_kind, read_eis, read_with_report
 from .eis import validate_eis
-from .exceptions import BatteryDataStandardError, FileIOError
+from .exceptions import BatteryDataStewardError, FileIOError
 from .export import to_export_frame
 from .physics_mapping import review_mapped_physics
 from .reports import ColumnProvenance
@@ -207,7 +207,7 @@ def explain(
             physics_checks=review_mapped_physics(df, report.provenance),
             recommended_next_action=_next_action(status, report.cycler),
         )
-    except BatteryDataStandardError as exc:
+    except BatteryDataStewardError as exc:
         return ExplainReport(
             input_path=str(input_path),
             status="error",
@@ -252,7 +252,7 @@ def _explain_eis(
             validation=validation.to_dict(),
             recommended_next_action="Use bds convert-eis to write a standardized EIS table.",
         )
-    except BatteryDataStandardError as exc:
+    except BatteryDataStewardError as exc:
         return ExplainReport(
             input_path=str(input_path),
             status="error",
@@ -268,7 +268,7 @@ def _explain_eis(
 def _safe_detect(path: Path) -> dict[str, Any] | None:
     try:
         return detect(path).to_dict()
-    except BatteryDataStandardError:
+    except BatteryDataStewardError:
         return None
 
 

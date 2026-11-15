@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.7.0 - 2026-11-15
+
+- **Breaking:** rename the Python package and source directory to
+  `battery_data_steward`. Update imports and module commands to the new namespace;
+  the previous namespace is no longer shipped. The `bds` import alias and command
+  remain available and use the same public objects as the canonical package.
+- Rename the public base exception to `BatteryDataStewardError`; existing specific
+  exception names and their behavior are unchanged.
+- Write `battery-data-steward-export-v1` as the report's `export_format` identifier.
+  Export columns, schema versions, numerical values, and validation rules are
+  unchanged. Use `bds`, `battery-data-steward`, or `battery_data_steward` for the
+  default export target; obsolete product-name aliases are removed.
+- Update notebooks, documentation, package metadata, typed-package markers, tests,
+  and CI/release wheel checks to use the Steward namespace.
+- Consumers with direct imports from BDS 0.6.x must migrate before upgrading.
+  Battery Feature Lab 0.9.0 remains pinned to BDS 0.6.x; its EIS imports and
+  dependency constraint need a coordinated update for BDS 0.7.x.
+
 ## 0.6.0 - 2026-11-15
 
 - Add two non-mutating signal screens, run during conversion, inspection, explain and audit

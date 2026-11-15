@@ -7,5 +7,6 @@ body. Validation of supported tables does not certify fitness for a particular
 scientific analysis.
 
 The project was previously named Battery Data Standard. Historical copyright
-notices, Python module paths, exception names, and serialized format identifiers
-remain valid and are retained for attribution and compatibility.
+notices are retained for attribution. Version 0.7.0 completes the runtime rename
+to `battery_data_steward`, `BatteryDataStewardError`, and the Steward-branded
+export identifier. See the changelog for migration details.

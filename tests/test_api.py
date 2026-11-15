@@ -8,9 +8,9 @@ import sys
 import polars as pl
 import pytest
 
-import battery_data_standard as bds
-from battery_data_standard import __version__
-from battery_data_standard.validation import validate
+import battery_data_steward as bds
+from battery_data_steward import __version__
+from battery_data_steward.validation import validate
 
 
 def test_neware_flat_csv_normalizes_units_and_sign(tmp_path):
@@ -402,7 +402,7 @@ def test_neware_record_workbook_merges_continuations_and_step_cycle_context(tmp_
     assert "NEWARE Step Type" not in exported.columns
     assert "Step Type" in exported.columns
     assert reports[0].columns == exported.columns
-    assert reports[0].metadata["export_format"] == "battery-data-standard-export-v1"
+    assert reports[0].metadata["export_format"] == "battery-data-steward-export-v1"
 
 
 def test_generic_profile_and_convert_report(tmp_path):
@@ -608,7 +608,7 @@ def test_matlab_named_vectors_convert_to_bdf(tmp_path):
 
 
 def test_matlab_novonix_data_vectors_convert_to_bdf(tmp_path, monkeypatch):
-    from battery_data_standard import io as bds_io
+    from battery_data_steward import io as bds_io
 
     raw = tmp_path / "novonix_like.mat"
     raw.write_bytes(b"matlab fixture stub")
@@ -634,7 +634,7 @@ def test_matlab_novonix_data_vectors_convert_to_bdf(tmp_path, monkeypatch):
 
 
 def test_matlab_dataset_u_i_vectors_convert_to_bdf(tmp_path, monkeypatch):
-    from battery_data_standard import io as bds_io
+    from battery_data_steward import io as bds_io
 
     raw = tmp_path / "dataset_ui.mat"
     raw.write_bytes(b"matlab fixture stub")
@@ -743,7 +743,7 @@ def test_cli_detect_and_validate(tmp_path):
     raw.write_text("DateTime,Voltage(V),Current(mA)\n2026-01-01 00:00:00,3.5,1000\n", encoding="utf-8")
 
     detect_run = subprocess.run(
-        [sys.executable, "-m", "battery_data_standard.cli", "detect", str(raw)],
+        [sys.executable, "-m", "battery_data_steward.cli", "detect", str(raw)],
         text=True,
         capture_output=True,
         check=True,
@@ -755,7 +755,7 @@ def test_cli_detect_and_validate(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "convert",
             str(raw),
             str(out),
@@ -768,7 +768,7 @@ def test_cli_detect_and_validate(tmp_path):
         check=True,
     )
     validate_run = subprocess.run(
-        [sys.executable, "-m", "battery_data_standard.cli", "validate", str(out)],
+        [sys.executable, "-m", "battery_data_steward.cli", "validate", str(out)],
         text=True,
         capture_output=True,
         check=True,
@@ -777,9 +777,9 @@ def test_cli_detect_and_validate(tmp_path):
 
 
 def test_public_version_and_module_cli():
-    assert __version__ == "0.6.0"
+    assert __version__ == "0.7.0"
     run = subprocess.run(
-        [sys.executable, "-m", "battery_data_standard", "--version"],
+        [sys.executable, "-m", "battery_data_steward", "--version"],
         text=True,
         capture_output=True,
         check=True,

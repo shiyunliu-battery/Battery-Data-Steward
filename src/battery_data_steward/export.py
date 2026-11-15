@@ -14,8 +14,8 @@ from .exceptions import ConversionError
 from .reports import ValidationIssue, ValidationReport
 from .schema import canonical_label_for
 
-# Retain the serialized identifier so existing report consumers remain compatible.
-EXPORT_FORMAT_VERSION = "battery-data-standard-export-v1"
+# Steward-branded identifier; the normalized export columns are unchanged.
+EXPORT_FORMAT_VERSION = "battery-data-steward-export-v1"
 
 
 @dataclass(frozen=True)
@@ -49,9 +49,6 @@ EXPORT_TARGET_IDS = tuple(target.id for target in EXPORT_TARGETS)
 
 _EXPORT_TARGET_ALIASES = {
     "default": "bds",
-    "standard": "bds",
-    "battery_data_standard": "bds",
-    "battery-data-standard": "bds",
     "battery-data-steward": "bds",
     "battery_data_steward": "bds",
     "battery_archive": "battery-archive",

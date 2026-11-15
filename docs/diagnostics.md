@@ -202,7 +202,7 @@ each channel's onset and recovery, and the voltage and current change across the
 
 The thresholds are screening defaults, not physical limits; `clock_divergence(df, min_divergence_s=…)`
 and `temperature_excursions(df, min_step_c=…, min_rate_c_per_s=…, min_component_c=…,
-coincidence_window_s=…)` in `battery_data_standard.signal_screens` accept other values, and every
+coincidence_window_s=…)` in `battery_data_steward.signal_screens` accept other values, and every
 result records the values used. Whether an episode is an acquisition artefact or a real thermal
 event, and whether to exclude its samples, is a review decision.
 

@@ -11,14 +11,14 @@ from pathlib import Path
 import pandas as pd
 import polars as pl
 
-from battery_data_standard.inspection import inspect
-from battery_data_standard.physics_mapping import (
+from battery_data_steward.inspection import inspect
+from battery_data_steward.physics_mapping import (
     _capacity_relation,
     _power_relation,
     review_mapped_physics,
     suggest_headerless_columns,
 )
-from battery_data_standard.reports import ColumnProvenance
+from battery_data_steward.reports import ColumnProvenance
 
 
 def _two_row_headerless(path: Path) -> None:
@@ -33,7 +33,7 @@ def _two_row_headerless(path: Path) -> None:
 
 def test_headerless_backend_names_are_stably_one_based(tmp_path):
     """The position labels must not shift with pandas or Polars releases."""
-    from battery_data_standard.io import (
+    from battery_data_steward.io import (
         _canonicalize_headerless_positions,
         read_table_with_metadata,
     )

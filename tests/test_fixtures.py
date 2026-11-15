@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 import bds
-from battery_data_standard.validation import validate
+from battery_data_steward.validation import validate
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures"
 
@@ -60,7 +60,7 @@ def test_fixture_cli_convert_writes_report(tmp_path):
         [
             sys.executable,
             "-m",
-            "battery_data_standard.cli",
+            "battery_data_steward.cli",
             "convert",
             str(source),
             str(output),

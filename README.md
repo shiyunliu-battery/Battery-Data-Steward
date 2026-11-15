@@ -4,7 +4,7 @@
 
 Evidence-aware battery data preprocessing and quality assurance.
 
-[![Version 0.6.0](https://img.shields.io/badge/version-0.6.0-blue.svg)](CHANGELOG.md)
+[![Version 0.7.0](https://img.shields.io/badge/version-0.7.0-blue.svg)](CHANGELOG.md)
 [![Python >=3.11](https://img.shields.io/badge/Python-%3E%3D3.11-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Package](https://img.shields.io/badge/package-battery--data--steward-blue.svg)](pyproject.toml)
@@ -32,34 +32,43 @@ own cycler software before using the package in automated production workflows.
 
 ## Installation
 
-Python 3.11 or newer is required. The distribution is `battery-data-steward`
-on PyPI; it was renamed from `battery-data-standard` in 0.4.0.
+Python 3.11 or newer is required. The distribution name is `battery-data-steward`.
+This checkout targets **0.7.0**, which uses the Python package
+`battery_data_steward`. The examples below require this version or newer.
 
-When migrating an environment that has the old distribution installed, first run
-`python -m pip uninstall battery-data-standard`. Both distributions provide the
-same import paths and CLI, so they should not be installed together.
-
-```bash
-pip install --upgrade battery-data-steward
-```
-
-Optional extras are available for additional input formats:
+Until 0.7.0 is published on PyPI, install from the repository root in a fresh
+virtual environment:
 
 ```bash
-pip install "battery-data-steward[yaml]"
-pip install "battery-data-steward[matlab]"
-pip install "battery-data-steward[mpr]"
+python -m pip install -e .
 ```
 
-The distribution installs the `bds` command. Use the public short import;
-the historical module path remains compatible:
+After publication, install the matching release with
+`python -m pip install "battery-data-steward>=0.7.0"`.
+
+Optional extras are available for additional input formats. From this checkout:
+
+```bash
+python -m pip install -e ".[yaml]"
+python -m pip install -e ".[matlab]"
+python -m pip install -e ".[mpr]"
+```
+
+The distribution installs the `bds` command. Use either the canonical Python
+package or its short public alias:
 
 ```python
-import bds
+import battery_data_steward as bds
 
-# Existing code remains supported.
-import battery_data_standard as bds
+# Equivalent high-level API:
+import bds
 ```
+
+**Migrating from 0.6.x or earlier:** update module imports and `python -m` commands
+to `battery_data_steward`; the previous namespace is no longer installed. The
+`bds` command and short import remain available. The base exception is now
+`BatteryDataStewardError`. See [migration and release guidance](docs/releasing.md)
+for the export metadata change and downstream checks.
 
 ## Features
 

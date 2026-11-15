@@ -8,9 +8,9 @@ import zipfile
 
 import pytest
 
-import battery_data_standard as bds
-from battery_data_standard.archive import DEFAULT_MAX_MEMBER_BYTES, DEFAULT_MAX_TOTAL_BYTES
-from battery_data_standard.validation import validate
+import battery_data_steward as bds
+from battery_data_steward.archive import DEFAULT_MAX_MEMBER_BYTES, DEFAULT_MAX_TOTAL_BYTES
+from battery_data_steward.validation import validate
 
 
 def test_eis_csv_standardizes_to_eisfit_columns(tmp_path):
@@ -725,7 +725,7 @@ def test_cli_convert_eis(tmp_path):
     raw.write_text("Frequency_Hz,Zreal_Ohm,Zimag_Ohm\n100,0.1,-0.02\n", encoding="utf-8")
 
     run = subprocess.run(
-        [sys.executable, "-m", "battery_data_standard.cli", "convert-eis", str(raw), str(out)],
+        [sys.executable, "-m", "battery_data_steward.cli", "convert-eis", str(raw), str(out)],
         text=True,
         capture_output=True,
         check=True,

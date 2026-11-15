@@ -6,10 +6,10 @@ import polars as pl
 import pytest
 
 import bds
-from battery_data_standard.cli import main
-from battery_data_standard.eis import normalize_eis_frame, validate_eis
-from battery_data_standard.exceptions import ConversionError
-from battery_data_standard.time_sampling import apply_time_sampling_policy
+from battery_data_steward.cli import main
+from battery_data_steward.eis import normalize_eis_frame, validate_eis
+from battery_data_steward.exceptions import ConversionError
+from battery_data_steward.time_sampling import apply_time_sampling_policy
 
 
 @pytest.mark.parametrize("convention, expected", [("charge-positive", -1.0), ("discharge-positive", 1.0)])

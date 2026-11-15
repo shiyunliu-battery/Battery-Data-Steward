@@ -22,7 +22,7 @@ from .diagnostics import ExplainReport, explain
 from .doctor import DoctorReport, doctor
 from .exceptions import (
     AmbiguousDetectionError,
-    BatteryDataStandardError,
+    BatteryDataStewardError,
     ConversionError,
     DetectionError,
     FileIOError,
@@ -52,7 +52,7 @@ __all__ = [
     "AuditReport",
     "BDF_SCHEMA_VERSION",
     "BDS_SCHEMA_VERSION",
-    "BatteryDataStandardError",
+    "BatteryDataStewardError",
     "ConversionReport",
     "ConversionError",
     "DetectionResult",

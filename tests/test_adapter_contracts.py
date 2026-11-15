@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from battery_data_standard.adapters.registry import adapter_metadata, all_adapters
+from battery_data_steward.adapters.registry import adapter_metadata, all_adapters
 
 
 def test_all_adapters_publish_maturity_metadata():

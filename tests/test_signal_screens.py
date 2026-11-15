@@ -15,8 +15,8 @@ import polars as pl
 import pytest
 
 import bds
-from battery_data_standard.quality import quality_checks
-from battery_data_standard.signal_screens import clock_divergence, screen_issues, temperature_excursions
+from battery_data_steward.quality import quality_checks
+from battery_data_steward.signal_screens import clock_divergence, screen_issues, temperature_excursions
 
 T0 = 1_549_465_080.0  # 2019-02-06 15:58 UTC
 

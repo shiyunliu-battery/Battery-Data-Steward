@@ -24,7 +24,7 @@ from .audit import audit
 from .diagnostics import explain
 from .doctor import doctor
 from .exceptions import (
-    BatteryDataStandardError,
+    BatteryDataStewardError,
     DetectionError,
     FileIOError,
     UnsupportedFeatureError,
@@ -530,7 +530,7 @@ def main(argv: list[str] | None = None) -> int:
     except FileIOError as exc:
         print(f"bds: io error: {exc}", file=sys.stderr)
         return EXIT_IO
-    except BatteryDataStandardError as exc:
+    except BatteryDataStewardError as exc:
         print(f"bds: error: {exc}", file=sys.stderr)
         return EXIT_ERROR
     return EXIT_OK

@@ -10,7 +10,7 @@ from typing import Any
 
 from .api import detect, detect_kind, read_eis, read_with_report
 from .eis import validate_eis
-from .exceptions import BatteryDataStandardError, FileIOError
+from .exceptions import BatteryDataStewardError, FileIOError
 from .reports import ValidationIssue
 from .schema import REQUIRED_COLUMNS, aliases_for
 
@@ -182,7 +182,7 @@ def doctor(
             ),
             fixture_checklist=fixture_checklist,
         )
-    except BatteryDataStandardError as exc:
+    except BatteryDataStewardError as exc:
         return DoctorReport(
             input_path=str(input_path),
             status="error",
@@ -233,7 +233,7 @@ def _doctor_eis(
             suggestions=["Use bds convert-eis to write a standardized EIS table."],
             fixture_checklist=fixture_checklist,
         )
-    except BatteryDataStandardError as exc:
+    except BatteryDataStewardError as exc:
         return DoctorReport(
             input_path=str(input_path),
             status="error",
@@ -251,7 +251,7 @@ def _doctor_eis(
 def _safe_detect(path: Path) -> dict[str, Any] | None:
     try:
         return detect(path).to_dict()
-    except BatteryDataStandardError:
+    except BatteryDataStewardError:
         return None
 
 

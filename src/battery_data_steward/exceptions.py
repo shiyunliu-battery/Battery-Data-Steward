@@ -5,11 +5,11 @@ from __future__ import annotations
 from .reports import ValidationReport
 
 
-class BatteryDataStandardError(Exception):
+class BatteryDataStewardError(Exception):
     """Base class for package errors."""
 
 
-class DetectionError(BatteryDataStandardError):
+class DetectionError(BatteryDataStewardError):
     """Raised when a cycler format cannot be detected or loaded."""
 
 
@@ -17,23 +17,23 @@ class AmbiguousDetectionError(DetectionError):
     """Raised when multiple cycler formats are plausible."""
 
 
-class UnsupportedFormatError(BatteryDataStandardError):
+class UnsupportedFormatError(BatteryDataStewardError):
     """Raised when an input or output format is not supported."""
 
 
-class UnsupportedFeatureError(BatteryDataStandardError):
+class UnsupportedFeatureError(BatteryDataStewardError):
     """Raised when a known but unavailable feature is requested."""
 
 
-class ConversionError(BatteryDataStandardError):
+class ConversionError(BatteryDataStewardError):
     """Raised when conversion cannot be completed."""
 
 
-class FileIOError(BatteryDataStandardError):
+class FileIOError(BatteryDataStewardError):
     """Raised when a file cannot be read or written."""
 
 
-class ValidationFailed(BatteryDataStandardError):
+class ValidationFailed(BatteryDataStewardError):
     """Raised when strict validation fails."""
 
     def __init__(self, report: ValidationReport):

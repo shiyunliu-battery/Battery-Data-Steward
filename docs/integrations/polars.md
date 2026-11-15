@@ -42,9 +42,9 @@ If you already have an in-memory dataframe from `bds.read()`, convert it to the
 same BDS export shape before writing Polars expressions intended for files:
 
 ```python
-import battery_data_standard as bds
+import battery_data_steward as bds
 import polars as pl
-from battery_data_standard.export import to_export_frame
+from battery_data_steward.export import to_export_frame
 
 df = bds.read("raw.mpt", cycler="auto", current_sign="preserve")
 bds_df = to_export_frame(df, target="polars")

@@ -1,10 +1,10 @@
 # Python API Reference
 
-Stable high-level entry points are exported from `battery_data_standard` and from
+Stable high-level entry points are exported from `battery_data_steward` and from
 the short alias package `bds`.
 
 ```python
-import battery_data_standard as bds
+import battery_data_steward as bds
 
 # or
 import bds
@@ -47,7 +47,7 @@ advanced users. For public BDS handoff, display, or saved files, convert it to
 the export template:
 
 ```python
-from battery_data_standard.export import to_export_frame
+from battery_data_steward.export import to_export_frame
 
 export_df = to_export_frame(df)
 ```
@@ -325,7 +325,7 @@ PDF output is also supported.
 ### `audit`
 
 ```python
-from battery_data_standard.audit import audit
+from battery_data_steward.audit import audit
 
 report = audit(
     "raw_exports",
@@ -355,7 +355,7 @@ bds audit raw_exports --recursive --json audit.json --html audit.html
 ### `audit_file`
 
 ```python
-from battery_data_standard.audit import audit_file
+from battery_data_steward.audit import audit_file
 
 record = audit_file("raw_export.csv")
 ```
@@ -421,13 +421,13 @@ Validates an in-memory normalized dataframe and returns `ValidationReport`.
 ### `validate_file`
 
 ```python
-from battery_data_standard.api import validate_file
+from battery_data_steward.api import validate_file
 
 validate_file(path, schema_version=..., strict=True)
 ```
 
 Validates an existing normalized CSV, Excel, or Parquet file on disk. This helper
-is available from `battery_data_standard.api`.
+is available from `battery_data_steward.api`.
 
 ## Reports
 
@@ -529,7 +529,7 @@ include validation details, row count, and columns. Skipped records include
 
 ## Exceptions
 
-Public API callers should catch `BatteryDataStandardError` or one of its
+Public API callers should catch `BatteryDataStewardError` or one of its
 subclasses:
 
 - `DetectionError`

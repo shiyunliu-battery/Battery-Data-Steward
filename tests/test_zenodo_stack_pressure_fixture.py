@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-import battery_data_standard as bds
-from battery_data_standard.validation import validate
+import battery_data_steward as bds
+from battery_data_steward.validation import validate
 
 FIXTURE = Path(__file__).with_name("240805_MBTF_DYNAMIC_SPRINGS_01_Channel_1_Wb_1.xlsx")
 

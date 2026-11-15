@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .eis import looks_like_eis_columns
-from .exceptions import BatteryDataStandardError
+from .exceptions import BatteryDataStewardError
 from .io import read_table_with_metadata, sample_text, xlsx_sheet_names
 from .schema import CANONICAL_COLUMNS, canonical_label_for
 
@@ -102,7 +102,7 @@ def detect_kind(path: str | Path, *, sheet: str | int | None = None) -> DataKind
 
     try:
         result = read_table_with_metadata(input_path, options={"sheet": sheet})
-    except BatteryDataStandardError as exc:
+    except BatteryDataStewardError as exc:
         return DataKindResult("unknown", 0.0, str(exc), str(input_path))
     except OSError as exc:
         return DataKindResult("unknown", 0.0, str(exc), str(input_path))

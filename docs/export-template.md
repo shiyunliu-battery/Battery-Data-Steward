@@ -108,7 +108,7 @@ bds validate normalized.bds.csv
 or:
 
 ```python
-from battery_data_standard.api import validate_file
+from battery_data_steward.api import validate_file
 
 report = validate_file("normalized.bds.csv")
 ```

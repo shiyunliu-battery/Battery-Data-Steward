@@ -18,7 +18,7 @@ from .eis import convert_eis as _convert_eis
 from .eis import read_eis as _read_eis
 from .eis import validate_eis as _validate_eis
 from .exceptions import (
-    BatteryDataStandardError,
+    BatteryDataStewardError,
     ConversionError,
     FileIOError,
     UnsupportedFormatError,
@@ -229,7 +229,7 @@ def read_with_report(
                 repair_policy=repair_policy,
                 options=options,
             )
-    except BatteryDataStandardError:
+    except BatteryDataStewardError:
         raise
     except OSError as exc:
         raise FileIOError(f"Could not read {input_path}: {exc}") from exc
@@ -361,7 +361,7 @@ def convert(
     export_df = to_export_frame(df, target=target)
     try:
         write_dataframe(export_df, output_path, fmt=format)
-    except BatteryDataStandardError:
+    except BatteryDataStewardError:
         raise
     except OSError as exc:
         raise FileIOError(f"Could not write {output_path}: {exc}") from exc
@@ -676,7 +676,7 @@ def convert_eis(
     _ensure_input_file(input_path)
     try:
         return _convert_eis(input_path, output_path, format=format, sheet=sheet, phase_unit=phase_unit)
-    except BatteryDataStandardError:
+    except BatteryDataStewardError:
         raise
     except OSError as exc:
         raise FileIOError(f"Could not convert EIS file {input_path}: {exc}") from exc
@@ -874,7 +874,7 @@ def _auto_process_timeseries(
                 return adapter, result
             fallback = fallback or (adapter, result)
             failures.append(f"{adapter.id}: " + "; ".join(issue.message for issue in report.issues))
-        except BatteryDataStandardError as exc:
+        except BatteryDataStewardError as exc:
             failures.append(f"{adapter.id}: {exc}")
 
     if fallback is not None and not strict:

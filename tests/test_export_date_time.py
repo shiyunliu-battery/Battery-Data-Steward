@@ -13,8 +13,8 @@ import polars as pl
 import pytest
 
 import bds
-from battery_data_standard.adapters.normalization import _parse_unix_time
-from battery_data_standard.export import iso_date_time_from_unix, to_export_frame
+from battery_data_steward.adapters.normalization import _parse_unix_time
+from battery_data_steward.export import iso_date_time_from_unix, to_export_frame
 
 
 def _dayfirst_source(tmp_path):

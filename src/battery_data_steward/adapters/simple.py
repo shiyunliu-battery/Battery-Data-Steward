@@ -1,7 +1,7 @@
 """Compatibility exports for cycler adapters.
 
 The production adapters live in cycler-specific modules. This module remains
-so older imports from ``battery_data_standard.adapters.simple`` keep working.
+so older imports from ``battery_data_steward.adapters.simple`` keep working.
 """
 
 from __future__ import annotations
