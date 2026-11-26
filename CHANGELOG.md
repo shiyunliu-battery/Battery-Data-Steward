@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.1 - 2026-11-26
 
 - Fix BDF labels written by `--target bdf` (and shown by `inspect --target bdf`):
   - the cycler step column is written as `Step ID`, not `Step Count / 1`. BDF defines

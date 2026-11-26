@@ -4,7 +4,7 @@
 
 Evidence-aware battery data preprocessing and quality assurance.
 
-[![Version 0.7.0](https://img.shields.io/badge/version-0.7.0-blue.svg)](CHANGELOG.md)
+[![Version 0.7.1](https://img.shields.io/badge/version-0.7.1-blue.svg)](CHANGELOG.md)
 [![Python >=3.11](https://img.shields.io/badge/Python-%3E%3D3.11-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Package](https://img.shields.io/badge/package-battery--data--steward-blue.svg)](pyproject.toml)
@@ -33,19 +33,19 @@ own cycler software before using the package in automated production workflows.
 ## Installation
 
 Python 3.11 or newer is required. The distribution name is `battery-data-steward`.
-Version **0.7.0** uses the Python package `battery_data_steward`. Install the
+Version **0.7.1** uses the Python package `battery_data_steward`. Install the
 matching release in a fresh virtual environment:
 
 ```bash
-python -m pip install "battery-data-steward==0.7.0"
+python -m pip install "battery-data-steward==0.7.1"
 ```
 
 Optional extras are available for additional input formats:
 
 ```bash
-python -m pip install "battery-data-steward[yaml]==0.7.0"
-python -m pip install "battery-data-steward[matlab]==0.7.0"
-python -m pip install "battery-data-steward[mpr]==0.7.0"
+python -m pip install "battery-data-steward[yaml]==0.7.1"
+python -m pip install "battery-data-steward[matlab]==0.7.1"
+python -m pip install "battery-data-steward[mpr]==0.7.1"
 ```
 
 For development, install from the repository root with
