@@ -8,7 +8,19 @@ bds convert raw_export.csv normalized.bdf.csv --target bdf
 ```
 
 This writes BDF preferred labels (`Test Time / s`, `Voltage / V`,
-`Current / A`, `Cycle Count / 1`, `Step Count / 1`).
+`Current / A`, `Cycle Count / 1`, `Step ID`, `Record Index / 1`, ...).
+
+The cycler's step column (Arbin `Step_Index`, NEWARE or Maccor `Step ID`,
+BioLogic `Ns`) is written as BDF `Step ID`: the program step identifier, which
+may recur in successive cycles. BDS does not write `Step Count / 1`, because BDF
+defines it as a counter that never repeats and BDS does not derive one. The
+source record or data-point number is written as `Record Index / 1`, and the
+first auxiliary temperature channel as `Temperature T1 / degC`.
+
+`bds validate normalized.bdf.csv` maps the BDF labels back to the canonical BDS
+columns and validates them against the BDS schema. Files written by BDS 0.7.0 and earlier, which used
+`Step Count / 1`, `Step Index / 1` and `Surface Temperature T1 / degC`, are still
+read and validated.
 
 ## Scope
 

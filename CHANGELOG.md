@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- Fix BDF labels written by `--target bdf` (and shown by `inspect --target bdf`):
+  - the cycler step column is written as `Step ID`, not `Step Count / 1`. BDF defines
+    `Step Count / 1` as a counter that never repeats, but cycler step columns (Arbin
+    `Step_Index`, NEWARE/Maccor `Step ID`, BioLogic `Ns`) recur every cycle;
+  - the source record index is written as `Record Index / 1` instead of
+    `Step Index / 1`, which is not a BDF label;
+  - temperature channel T1 is written as `Temperature T1 / degC` instead of
+    `Surface Temperature T1 / degC`, which is not a BDF label.
+- Reading accepts the new labels as well as the previous ones, so files written by
+  0.7.0 and earlier still load.
+- Fix `bds validate` / `validate_file` rejecting files written by `--target bdf`
+  ("Missing required column test_time_s"): BDF labels, including those written by
+  0.7.0 and earlier, are mapped back to the canonical columns before validation.
+
 ## 0.7.0 - 2026-11-15
 
 - **Breaking:** rename the Python package and source directory to

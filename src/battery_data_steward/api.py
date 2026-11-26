@@ -27,7 +27,9 @@ from .exceptions import (
 from .export import (
     DATE_TIME_EXPORT_RULE,
     EXPORT_FORMAT_VERSION,
+    from_bdf_export_frame,
     iso_date_time_from_unix,
+    looks_like_bdf_export_frame,
     looks_like_export_frame,
     normalize_export_target,
     output_suffix_for_target,
@@ -638,6 +640,8 @@ def validate_file(
     _ensure_input_file(input_path)
     try:
         df = read_bds_like(input_path)
+        if looks_like_bdf_export_frame(df):
+            df = from_bdf_export_frame(df)
         report = validate(df, schema_version=schema_version, strict=strict)
         if report.valid or not looks_like_export_frame(df):
             return report
