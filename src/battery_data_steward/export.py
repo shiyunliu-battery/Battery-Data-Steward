@@ -108,12 +108,12 @@ _BDF_EXPORT_RENAMES = {
     "current_a": "Current / A",
     "unix_time_s": "Unix Time / s",
     "cycle_index": "Cycle Count / 1",
-    "step_index": "Step Count / 1",
-    "record_index": "Step Index / 1",
+    "step_index": "Step ID",
+    "record_index": "Record Index / 1",
     "step_time_s": "Step Time / s",
     "power_w": "Power / W",
     "ambient_temperature_deg_c": "Ambient Temperature / degC",
-    "temperature_t1_deg_c": "Surface Temperature T1 / degC",
+    "temperature_t1_deg_c": "Temperature T1 / degC",
     "charge_capacity_ah": "Charging Capacity / Ah",
     "discharge_capacity_ah": "Discharging Capacity / Ah",
     "charge_energy_wh": "Charging Energy / Wh",
@@ -427,6 +427,37 @@ def _select_target_columns(
         pl.col(source).alias(target_name) for source, target_name in optional if source in df.columns
     )
     return df.select(columns)
+
+
+# Labels the bdf target wrote in BDS 0.7.0 and earlier; still recognised when reading back.
+_LEGACY_BDF_EXPORT_LABELS = {
+    "Step Count / 1": "step_index",
+    "Step Index / 1": "record_index",
+    "Surface Temperature T1 / degC": "temperature_t1_deg_c",
+}
+
+
+def looks_like_bdf_export_frame(df: pl.DataFrame) -> bool:
+    """Return true when a table uses the bdf target's BDF labels."""
+    return {"Test Time / s", "Voltage / V", "Current / A"}.issubset(df.columns)
+
+
+def from_bdf_export_frame(df: pl.DataFrame) -> pl.DataFrame:
+    """Rename bdf-target labels (current and legacy) back to canonical BDS columns.
+
+    A canonical column is produced at most once: when a file carries both a current and a
+    legacy label for it, such as BDF ``Step ID`` and ``Step Count / 1``, the current label
+    is used and the other column is left unchanged.
+    """
+    labels = [(label, column) for column, label in _BDF_EXPORT_RENAMES.items()]
+    labels += list(_LEGACY_BDF_EXPORT_LABELS.items())
+    produced = set(df.columns)
+    rename: dict[str, str] = {}
+    for label, column in labels:
+        if label in df.columns and label not in rename and column not in produced:
+            rename[label] = column
+            produced.add(column)
+    return df.rename(rename)
 
 
 def looks_like_export_frame(df: pl.DataFrame) -> bool:

@@ -244,6 +244,7 @@ CANONICAL_COLUMNS: tuple[ColumnSpec, ...] = (
         False,
         "Point index within a step.",
         (
+            "Record Index / 1",
             "Step Index / 1",
             "Record Count / 1",
             "Record Index",
@@ -337,6 +338,7 @@ CANONICAL_COLUMNS: tuple[ColumnSpec, ...] = (
         False,
         "Surface temperature sensor T1.",
         (
+            "Temperature T1 / degC",
             "Surface Temperature T1 / degC",
             "temperature_t1_celsius",
             "T1",
