@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.2 - 2026-11-28
+
+- Avoid identifying generic cycling exports as Arbin based only on shared
+  time, cycle and step headers. Arbin detection still recognizes its
+  format-specific header signatures.
+
 ## 0.7.1 - 2026-11-26
 
 - Fix BDF labels written by `--target bdf` (and shown by `inspect --target bdf`):

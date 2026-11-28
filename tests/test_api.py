@@ -777,7 +777,7 @@ def test_cli_detect_and_validate(tmp_path):
 
 
 def test_public_version_and_module_cli():
-    assert __version__ == "0.7.1"
+    assert __version__ == "0.7.2"
     run = subprocess.run(
         [sys.executable, "-m", "battery_data_steward", "--version"],
         text=True,

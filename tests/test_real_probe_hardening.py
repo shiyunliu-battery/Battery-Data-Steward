@@ -249,6 +249,24 @@ def test_autolab_working_electrode_columns_convert(tmp_path):
     assert validate(df).valid
 
 
+@pytest.mark.parametrize(("current_header", "current"), [("Current (mA)", -1000), ("Current (A)", -1)])
+def test_generic_cycler_columns_do_not_identify_arbin(tmp_path, current_header, current):
+    raw = tmp_path / "raw_generic_cycler.csv"
+    raw.write_text(
+        f"Test Time (s),Voltage (V),{current_header},Cycle Index,Step Index,Step Time (s)\n"
+        f"0,3.98,{current},1,1,0\n"
+        f"10,3.97,{current},1,1,10\n",
+        encoding="utf-8",
+    )
+
+    detected = bds.detect(raw)
+    df = bds.read(raw, cycler="auto", current_sign="preserve")
+
+    assert detected.cycler == "generic"
+    assert df["current_a"].to_list() == [-1.0, -1.0]
+    assert df["cycle_index"].to_list() == [1, 1]
+
+
 def test_arbin_underscore_export_aliases_and_sign_convention(tmp_path):
     raw = tmp_path / "Talos_001385_NCR18650_CH33.csv"
     raw.write_text(
