@@ -30,7 +30,7 @@ The namespace change is a breaking import change from 0.6.x and earlier:
   requirements, lockfiles, optional extras and distribution-metadata lookups.
 
 Install the matching release with
-`python -m pip install "battery-data-steward==0.7.1"` in a fresh environment. The
+`python -m pip install "battery-data-steward==0.7.2"` in a fresh environment. The
 current documentation and notebooks use the 0.7.0 namespace; an older release
 does not provide it. For development, install from the repository root with
 `python -m pip install -e ".[dev]"`.

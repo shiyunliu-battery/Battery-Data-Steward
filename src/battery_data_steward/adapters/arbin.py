@@ -12,14 +12,12 @@ class ArbinAdapter(GenericAdapter):
     support_tier = "fixture-backed"
     evidence_tier = "public-fixture-backed"
     raw_current_sign = "charge-positive"
+    # Shared time, cycle, and step labels still work as column aliases.
+    # Use native export markers and unit-qualified Arbin headers for detection.
     signatures = (
         "arbin",
-        "cycle index",
-        "cycle_index",
-        "step index",
-        "step_index",
-        "test time",
-        "test_time",
+        "test_time(",
+        "step_time(",
         "data point",
         "data_point",
         "date_time",

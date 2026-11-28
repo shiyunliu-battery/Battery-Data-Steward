@@ -8,7 +8,7 @@ Data: Schommer, A., Orozco Corzo, M., & Paul, H. (2024). *Dataset: Stack pressur
 Setup (these examples use the 0.7.0 Python namespace):
 
 ```bash
-python -m pip install "battery-data-steward==0.7.1"
+python -m pip install "battery-data-steward==0.7.2"
 ```
 
 For development, install from the repository root with `python -m pip install -e .`.
